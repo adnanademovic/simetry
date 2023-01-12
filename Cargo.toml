@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "simetry",
+]
+
+[patch.crates-io]
+simetry = { path = "simetry" }
