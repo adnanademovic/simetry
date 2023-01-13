@@ -2,7 +2,6 @@ use std::time::Duration;
 
 pub(super) static DATAVALIDEVENTNAME: &[u8] = b"Local\\IRSDKDataValidEvent";
 pub(super) static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName";
-pub(super) static BROADCASTMSGNAME: &[u8] = b"IRSDK_BROADCASTMSG";
 
 pub(super) const MAX_BUFS: usize = 4;
 pub(super) const MAX_STRING: usize = 32;
