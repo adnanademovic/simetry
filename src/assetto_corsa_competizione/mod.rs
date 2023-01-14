@@ -17,7 +17,7 @@ mod data;
 mod shared_memory_data;
 
 pub struct SharedMemoryClient {
-    static_data: StaticData,
+    static_data: Arc<StaticData>,
     physics_data: SharedMemory,
     graphics_data: SharedMemory,
     last_physics: Arc<Physics>,
@@ -26,6 +26,7 @@ pub struct SharedMemoryClient {
 
 #[derive(Clone, Debug)]
 pub struct SimState {
+    pub static_data: Arc<StaticData>,
     pub physics: Arc<Physics>,
     pub graphics: Arc<Graphics>,
 }
@@ -39,13 +40,15 @@ impl SharedMemoryClient {
         }
 
         let physics_data = SharedMemory::connect(b"Local\\acpmf_physics\0", poll_delay).await;
-        let static_data = unsafe {
-            SharedMemory::connect(b"Local\\acpmf_static\0", poll_delay)
-                .await
-                .get_as::<PageFileStatic>()
-        }
-        .clone()
-        .into();
+        let static_data = Arc::new(
+            unsafe {
+                SharedMemory::connect(b"Local\\acpmf_static\0", poll_delay)
+                    .await
+                    .get_as::<PageFileStatic>()
+            }
+            .clone()
+            .into(),
+        );
         let last_physics = Arc::new(Self::physics(&physics_data));
         let last_graphics = Arc::new(Self::graphics(&physics_data));
         Ok(Self {
@@ -77,6 +80,7 @@ impl SharedMemoryClient {
             }
             if changed {
                 return Some(SimState {
+                    static_data: Arc::clone(&self.static_data),
                     physics: Arc::clone(&self.last_physics),
                     graphics: Arc::clone(&self.last_graphics),
                 });
