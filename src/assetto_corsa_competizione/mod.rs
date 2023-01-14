@@ -24,9 +24,9 @@ pub struct SharedMemoryClient {
 impl SharedMemoryClient {
     pub async fn connect() -> Result<Self> {
         let poll_delay = Duration::from_millis(250);
-        let static_data = SharedMemory::connect(b"Local\\acpmf_static", poll_delay);
-        let physics_data = SharedMemory::connect(b"Local\\acpmf_physics", poll_delay);
-        let graphics_data = SharedMemory::connect(b"Local\\acpmf_graphics", poll_delay);
+        let static_data = SharedMemory::connect(b"Local\\acpmf_static\0", poll_delay);
+        let physics_data = SharedMemory::connect(b"Local\\acpmf_physics\0", poll_delay);
+        let graphics_data = SharedMemory::connect(b"Local\\acpmf_graphics\0", poll_delay);
         Ok(Self {
             static_data: static_data.await,
             physics_data: physics_data.await,
