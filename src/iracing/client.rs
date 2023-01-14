@@ -18,6 +18,32 @@ const STATUS_CONNECTED_FLAG: i32 = 1;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
+pub struct ClientConnection<'a> {
+    connected: bool,
+    client: &'a mut Client,
+}
+
+impl<'a> Iterator for ClientConnection<'a> {
+    type Item = SimState;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.connected {
+            while !self.client.is_connected() {
+                if let Some(data) = self.client.wait_for_sim_state(Duration::from_millis(250)) {
+                    return Some(data);
+                }
+            }
+            self.connected = true;
+        }
+        while self.client.is_connected() {
+            if let Some(data) = self.client.wait_for_sim_state(Duration::from_millis(250)) {
+                return Some(data);
+            }
+        }
+        None
+    }
+}
+
 pub struct Client {
     vars_at_buf_len: i32,
     vars: Arc<VarHeaders>,
@@ -29,7 +55,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect() -> Self {
+    pub async fn initialize() -> Self {
         let shared_memory = SharedMemory::connect();
         let data_valid_event = DataValidEvent::connect();
 
@@ -40,6 +66,13 @@ impl Client {
             last_valid_time: SystemTime::UNIX_EPOCH,
             shared_memory: shared_memory.await,
             data_valid_event: data_valid_event.await,
+        }
+    }
+
+    pub fn run_connection(&mut self) -> ClientConnection {
+        ClientConnection {
+            client: self,
+            connected: false,
         }
     }
 
