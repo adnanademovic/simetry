@@ -1,11 +1,7 @@
-pub use crate::assetto_corsa_competizione::data::{
-    Aids, CarDamage, FlagType, GlobalFlags, Graphics, LapTiming, MfdPitstop, Penalty, Physics,
-    RainIntensity, SessionType, StaticData, Status, Time, TrackGripStatus, Vector3, WheelInfo,
-    Wheels,
+pub use crate::assetto_corsa::data::{
+    FlagType, Graphics, Penalty, Physics, SessionType, StaticData, Status,
 };
-use crate::assetto_corsa_competizione::shared_memory_data::{
-    PageFileGraphics, PageFilePhysics, PageFileStatic,
-};
+use crate::assetto_corsa::shared_memory_data::{PageFileGraphics, PageFilePhysics, PageFileStatic};
 use crate::windows_util::SharedMemory;
 use anyhow::Result;
 use std::sync::Arc;
