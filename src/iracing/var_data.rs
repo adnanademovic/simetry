@@ -1,4 +1,4 @@
-use super::header::{VarHeader, VarType};
+use crate::iracing::header::{VarHeader, VarType};
 use byteorder::{LittleEndian, ReadBytesExt};
 
 pub trait VarData: Sized {

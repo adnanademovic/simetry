@@ -1,9 +1,8 @@
 use crate::iracing::constants::IRSDK_VER;
-use crate::iracing::header::{Header, VarBuf};
+use crate::iracing::header::{VarBuf, VarHeaderRaw};
 use crate::iracing::session_info::parse_session_info;
 use crate::iracing::util::{SafeFileView, SafeHandle};
-use crate::iracing::SimState;
-use crate::iracing_basic_solution::header::{VarHeader, VarHeaderRaw, VarHeaders};
+use crate::iracing::{Header, SimState, VarHeader, VarHeaders};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::slice::from_raw_parts;

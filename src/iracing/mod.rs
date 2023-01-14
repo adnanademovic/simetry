@@ -10,11 +10,14 @@ mod flags;
 mod header;
 mod session_info;
 mod sim_state;
-pub mod string_decoding;
+mod string_decoding;
 mod util;
+mod var_data;
 
 pub use client::Client;
+pub use constants::{UNLIMITED_LAPS, UNLIMITED_TIME};
 pub use disk_client::DiskClient;
 pub use flags::{CameraFlag, CameraState};
-pub use header::Header;
+pub use header::{DiskSubHeader, Header, VarHeader, VarHeaders, VarType};
 pub use sim_state::SimState;
+pub use var_data::{Value, VarData};

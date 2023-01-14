@@ -1,7 +1,7 @@
 use crate::iracing::constants::IRSDK_VER;
+use crate::iracing::header::VarHeaderRaw;
 use crate::iracing::session_info::parse_session_info;
-use crate::iracing::{Header, SimState};
-use crate::iracing_basic_solution::header::{DiskSubHeader, VarHeader, VarHeaderRaw, VarHeaders};
+use crate::iracing::{DiskSubHeader, Header, SimState, VarHeader, VarHeaders};
 use anyhow::{bail, Result};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -13,6 +13,7 @@ use yaml_rust::Yaml;
 pub struct DiskClient {
     file: File,
     header: Arc<Header>,
+    sub_header: DiskSubHeader,
     variables: Arc<VarHeaders>,
     session_info: Arc<Yaml>,
 }
@@ -27,7 +28,7 @@ impl DiskClient {
             bail!("iRacing SDK version mismatch: expected {IRSDK_VER}, received {sdk_version}");
         }
 
-        let _disk_sub_header: DiskSubHeader = read_struct(&mut file)?;
+        let sub_header: DiskSubHeader = read_struct(&mut file)?;
 
         let mut session_info_buffer = vec![0u8; header.session_info_len as usize];
         file.seek(SeekFrom::Start(header.session_info_offset as u64))?;
@@ -50,6 +51,7 @@ impl DiskClient {
         Ok(Self {
             file,
             header,
+            sub_header,
             variables,
             session_info,
         })
@@ -57,6 +59,10 @@ impl DiskClient {
 
     pub fn header(&self) -> &Header {
         &self.header
+    }
+
+    pub fn sub_header(&self) -> &DiskSubHeader {
+        &self.sub_header
     }
 
     pub fn variables(&self) -> &VarHeaders {

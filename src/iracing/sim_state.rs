@@ -1,6 +1,4 @@
-use crate::iracing::header::Header;
-use crate::iracing_basic_solution::header::{VarHeader, VarHeaders, VarType};
-use crate::iracing_basic_solution::{Value, VarData};
+use crate::iracing::{Header, Value, VarData, VarHeader, VarHeaders, VarType};
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use yaml_rust::Yaml;
