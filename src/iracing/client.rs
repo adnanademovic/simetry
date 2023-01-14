@@ -115,7 +115,7 @@ impl Client {
         None
     }
 
-    pub fn is_connected(&self) -> bool {
+    fn is_connected(&self) -> bool {
         if !self.shared_memory.is_header_connected() {
             return false;
         }
