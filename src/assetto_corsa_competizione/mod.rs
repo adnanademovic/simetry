@@ -52,5 +52,5 @@ impl util::WithPacketId for Graphics {
     }
 }
 
-pub type SharedMemoryClient = util::SharedMemoryClient<AssettoCorsaCompetizioneApiVersion>;
+pub type Client = util::SharedMemoryClient<AssettoCorsaCompetizioneApiVersion>;
 pub type SimState = util::SimState<AssettoCorsaCompetizioneApiVersion>;
