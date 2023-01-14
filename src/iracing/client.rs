@@ -1,6 +1,8 @@
+use crate::iracing::header::{Header, VarBuf};
 use crate::iracing::util::{SafeFileView, SafeHandle};
 use crate::iracing::SimState;
-use crate::iracing_basic_solution::header::{Header, VarBuf, VarHeader, VarHeaderRaw, VarHeaders};
+use crate::iracing_basic_solution::header::{VarHeader, VarHeaderRaw, VarHeaders};
+use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::slice::from_raw_parts;
 use std::sync::Arc;
@@ -20,6 +22,8 @@ const STATUS_CONNECTED_FLAG: i32 = 1;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
+const IRSDK_VER: i32 = 2;
+
 pub struct Client {
     vars_at_buf_len: i32,
     vars: Arc<VarHeaders>,
@@ -31,25 +35,30 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect() -> Self {
+    pub async fn connect() -> Result<Self> {
         let shared_memory = SharedMemory::connect();
         let data_valid_event = DataValidEvent::connect();
 
         let shared_memory = shared_memory.await;
         let data_valid_event = data_valid_event.await;
 
+        let sdk_version = shared_memory.header().ver;
+        if sdk_version != IRSDK_VER {
+            bail!("iRacing SDK version mismatch: expected {IRSDK_VER}, received {sdk_version}");
+        }
+
         while !shared_memory.is_header_connected() {
             data_valid_event.wait().await;
         }
 
-        Client {
+        Ok(Client {
             vars_at_buf_len: -1,
             vars: Arc::new(HashMap::new()),
             last_tick_count: i32::MAX,
             last_valid_time: None,
             shared_memory,
             data_valid_event,
-        }
+        })
     }
 
     pub async fn next_sim_state(&mut self) -> Option<SimState> {

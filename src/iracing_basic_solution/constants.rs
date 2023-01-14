@@ -1,4 +1,3 @@
-pub(super) const MAX_BUFS: usize = 4;
 pub(super) const MAX_STRING: usize = 32;
 // descriptions can be longer than max_string!
 pub(super) const MAX_DESC: usize = 64;

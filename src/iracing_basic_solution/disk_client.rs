@@ -1,6 +1,7 @@
-use super::header::{DiskSubHeader, Header, VarHeader, VarHeaderRaw};
+use super::header::{DiskSubHeader, VarHeader, VarHeaderRaw};
 use super::DataPoint;
 use crate::iracing::string_decoding::cp1252_to_string;
+use crate::iracing::Header;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};

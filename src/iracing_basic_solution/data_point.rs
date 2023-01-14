@@ -1,5 +1,6 @@
-use super::header::{Header, VarHeader};
+use super::header::VarHeader;
 use super::VarData;
+use crate::iracing::Header;
 use std::collections::HashMap;
 
 pub struct DataPoint<'a> {

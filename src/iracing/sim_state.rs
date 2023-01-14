@@ -1,5 +1,6 @@
+use crate::iracing::header::Header;
 use crate::iracing::string_decoding::cp1252_to_string;
-use crate::iracing_basic_solution::header::{Header, VarHeader, VarHeaders, VarType};
+use crate::iracing_basic_solution::header::{VarHeader, VarHeaders, VarType};
 use crate::iracing_basic_solution::{Value, VarData};
 use anyhow::{bail, Result};
 use std::fmt::{Debug, Formatter};
