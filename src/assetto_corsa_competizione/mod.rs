@@ -16,7 +16,7 @@ mod data;
 mod shared_memory_data;
 
 pub struct SharedMemoryClient {
-    static_data: SharedMemory,
+    static_data: StaticData,
     physics_data: SharedMemory,
     graphics_data: SharedMemory,
 }
@@ -24,20 +24,41 @@ pub struct SharedMemoryClient {
 impl SharedMemoryClient {
     pub async fn connect() -> Result<Self> {
         let poll_delay = Duration::from_millis(250);
-        let static_data = SharedMemory::connect(b"Local\\acpmf_static\0", poll_delay);
-        let physics_data = SharedMemory::connect(b"Local\\acpmf_physics\0", poll_delay);
-        let graphics_data = SharedMemory::connect(b"Local\\acpmf_graphics\0", poll_delay);
+        let graphics_data = SharedMemory::connect(b"Local\\acpmf_graphics\0", poll_delay).await;
+        loop {
+            let status: Status = unsafe { graphics_data.get_as::<PageFileGraphics>() }
+                .status
+                .into();
+            if status != Status::Off {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+
+        let physics_data = SharedMemory::connect(b"Local\\acpmf_physics\0", poll_delay).await;
+        let static_data = unsafe {
+            SharedMemory::connect(b"Local\\acpmf_static\0", poll_delay)
+                .await
+                .get_as::<PageFileStatic>()
+        }
+        .clone()
+        .into();
         Ok(Self {
-            static_data: static_data.await,
-            physics_data: physics_data.await,
-            graphics_data: graphics_data.await,
+            static_data,
+            physics_data: physics_data,
+            graphics_data: graphics_data,
         })
     }
 
-    pub fn static_data(&self) -> StaticData {
-        unsafe { self.static_data.get_as::<PageFileStatic>() }
-            .clone()
-            .into()
+    pub fn is_connected(&self) -> bool {
+        let status: Status = unsafe { self.graphics_data.get_as::<PageFileGraphics>() }
+            .status
+            .into();
+        status != Status::Off
+    }
+
+    pub fn static_data(&self) -> &StaticData {
+        &self.static_data
     }
 
     pub fn physics(&self) -> Physics {
