@@ -1,5 +1,5 @@
 use super::constants::{MAX_BUFS, MAX_DESC, MAX_STRING};
-use super::string_decoding::cp1252_to_string;
+use crate::iracing::string_decoding::cp1252_to_string;
 
 #[repr(C)]
 #[derive(Clone, Debug, Default)]

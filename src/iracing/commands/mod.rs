@@ -1,19 +1,21 @@
 use once_cell::sync::Lazy;
-use std::ffi::CString;
 use std::marker::PhantomData;
-use winapi::shared::minwindef::{MAKELONG, UINT};
-use winapi::um::winuser::{RegisterWindowMessageA, SendNotifyMessageA, HWND_BROADCAST};
+use windows::core::PCSTR;
+use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
+use windows::Win32::UI::WindowsAndMessaging::{RegisterWindowMessageA, SendNotifyMessageA};
 
 static BROADCASTMSGNAME: &[u8] = b"IRSDK_BROADCASTMSG";
 
-static IRACING_BROADCAST_MSG_ID: Lazy<UINT> = Lazy::new(|| {
-    let name = CString::new(BROADCASTMSGNAME).unwrap();
-    unsafe { RegisterWindowMessageA(name.as_ptr()) }
-});
+static IRACING_BROADCAST_MSG_ID: Lazy<u32> =
+    Lazy::new(|| unsafe { RegisterWindowMessageA(PCSTR::from_raw(BROADCASTMSGNAME.as_ptr())) });
 
 struct RawParams {
     var1: u16,
     var2: isize,
+}
+
+fn make_long(a: u16, b: u16) -> u32 {
+    (a as u32) | ((b as u32) << 16)
 }
 
 type Param1 = u16;
@@ -36,7 +38,7 @@ impl From<Param2u> for RawParams {
     fn from((var1, var2): Param2u) -> Self {
         Self {
             var1,
-            var2: MAKELONG(var2, 0u16) as isize,
+            var2: make_long(var2, 0u16) as isize,
         }
     }
 }
@@ -45,7 +47,7 @@ impl From<Param3> for RawParams {
     fn from((var1, var2, var3): Param3) -> Self {
         Self {
             var1,
-            var2: MAKELONG(var2, var3) as isize,
+            var2: make_long(var2, var3) as isize,
         }
     }
 }
@@ -83,13 +85,13 @@ impl<T: Into<RawParams>> Command<T> {
 
     fn run(&self, args: T) {
         let params = args.into();
-        let param1 = MAKELONG(self.code, params.var1) as usize;
+        let param1 = make_long(self.code, params.var1) as usize;
         unsafe {
             SendNotifyMessageA(
-                HWND_BROADCAST,
+                HWND(0xffff),
                 *IRACING_BROADCAST_MSG_ID,
-                param1,
-                params.var2,
+                WPARAM(param1),
+                LPARAM(params.var2),
             )
         };
     }

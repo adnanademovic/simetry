@@ -1,6 +1,6 @@
 use super::header::{DiskSubHeader, Header, VarHeader, VarHeaderRaw};
-use super::string_decoding::cp1252_to_string;
 use super::DataPoint;
+use crate::iracing::string_decoding::cp1252_to_string;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
