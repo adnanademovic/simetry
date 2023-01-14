@@ -5,11 +5,13 @@ use std::collections::HashMap;
 use std::slice::from_raw_parts;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+use tokio::task::spawn_blocking;
 use windows::core::PCSTR;
 use windows::Win32::System::Memory::{MapViewOfFile, OpenFileMappingA, FILE_MAP_READ};
 use windows::Win32::System::Threading::{
     OpenEventA, WaitForSingleObject, SYNCHRONIZATION_SYNCHRONIZE,
 };
+use windows::Win32::System::WindowsProgramming::INFINITE;
 
 static DATAVALIDEVENTNAME: &[u8] = b"Local\\IRSDKDataValidEvent";
 static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName";
@@ -18,85 +20,50 @@ const STATUS_CONNECTED_FLAG: i32 = 1;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
-pub struct ClientConnection<'a> {
-    connected: bool,
-    client: &'a mut Client,
-}
-
-impl<'a> Iterator for ClientConnection<'a> {
-    type Item = SimState;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if !self.connected {
-            while !self.client.is_connected() {
-                if let Some(data) = self.client.wait_for_sim_state(Duration::from_millis(250)) {
-                    return Some(data);
-                }
-            }
-            self.connected = true;
-        }
-        while self.client.is_connected() {
-            if let Some(data) = self.client.wait_for_sim_state(Duration::from_millis(250)) {
-                return Some(data);
-            }
-        }
-        None
-    }
-}
-
 pub struct Client {
     vars_at_buf_len: i32,
     vars: Arc<VarHeaders>,
     last_tick_count: i32,
-    last_valid_time: SystemTime,
+    last_valid_time: Option<SystemTime>,
 
     shared_memory: SharedMemory,
     data_valid_event: DataValidEvent,
 }
 
 impl Client {
-    pub async fn initialize() -> Self {
+    pub async fn connect() -> Self {
         let shared_memory = SharedMemory::connect();
         let data_valid_event = DataValidEvent::connect();
 
-        Self {
+        let shared_memory = shared_memory.await;
+        let data_valid_event = data_valid_event.await;
+
+        while !shared_memory.is_header_connected() {
+            data_valid_event.wait().await;
+        }
+
+        Client {
             vars_at_buf_len: -1,
             vars: Arc::new(HashMap::new()),
             last_tick_count: i32::MAX,
-            last_valid_time: SystemTime::UNIX_EPOCH,
-            shared_memory: shared_memory.await,
-            data_valid_event: data_valid_event.await,
+            last_valid_time: None,
+            shared_memory,
+            data_valid_event,
         }
     }
 
-    pub fn run_connection(&mut self) -> ClientConnection {
-        ClientConnection {
-            client: self,
-            connected: false,
+    pub async fn next_sim_state(&mut self) -> Option<SimState> {
+        loop {
+            if !self.is_connected() {
+                return None;
+            }
+
+            if let Some(sim_state) = self.get_new_sim_state() {
+                return Some(sim_state);
+            }
+
+            self.data_valid_event.wait().await;
         }
-    }
-
-    pub fn is_connected(&self) -> bool {
-        let header = self.shared_memory.header();
-        if header.status & STATUS_CONNECTED_FLAG == 0 {
-            return false;
-        }
-        let elapsed = match SystemTime::now().duration_since(self.last_valid_time) {
-            Ok(v) => v,
-            Err(_) => return false,
-        };
-        elapsed < CLIENT_TIMEOUT
-    }
-
-    pub fn wait_for_sim_state(&mut self, timeout: Duration) -> Option<SimState> {
-        let sim_state = self.get_new_sim_state();
-        if sim_state.is_some() {
-            return sim_state;
-        }
-
-        self.data_valid_event.wait_with_timeout(timeout);
-
-        self.get_new_sim_state()
     }
 
     fn get_new_sim_state(&mut self) -> Option<SimState> {
@@ -131,7 +98,7 @@ impl Client {
             let data = self.shared_memory.data(header, buffer);
             if tick_count == buffer.tick_count {
                 self.last_tick_count = tick_count;
-                self.last_valid_time = SystemTime::now();
+                self.last_valid_time = Some(SystemTime::now());
                 return if self.is_connected() {
                     Some(SimState::new(
                         header.clone(),
@@ -146,6 +113,23 @@ impl Client {
         }
 
         None
+    }
+
+    pub fn is_connected(&self) -> bool {
+        if !self.shared_memory.is_header_connected() {
+            return false;
+        }
+        let last_valid_time = match self.last_valid_time {
+            Some(v) => v,
+            None => {
+                return true;
+            }
+        };
+        let elapsed = match SystemTime::now().duration_since(last_valid_time) {
+            Ok(v) => v,
+            Err(_) => return false,
+        };
+        elapsed < CLIENT_TIMEOUT
     }
 }
 
@@ -198,6 +182,10 @@ impl SharedMemory {
 
     fn header(&self) -> &Header {
         unsafe { &*(self.file_view.get() as *const Header) }
+    }
+
+    fn is_header_connected(&self) -> bool {
+        (self.header().status & STATUS_CONNECTED_FLAG) != 0
     }
 
     fn raw_var_headers(&self) -> &[VarHeaderRaw] {
@@ -267,9 +255,20 @@ impl DataValidEvent {
         }
     }
 
+    #[allow(dead_code)]
     fn wait_with_timeout(&self, timeout: Duration) {
         unsafe {
             WaitForSingleObject(self.handle.get(), timeout.as_millis() as u32);
         }
+    }
+
+    async fn wait(&self) {
+        let handle = self.handle.get();
+        // TODO: show some warning on error
+        spawn_blocking(move || unsafe {
+            WaitForSingleObject(handle, INFINITE);
+        })
+        .await
+        .ok();
     }
 }
