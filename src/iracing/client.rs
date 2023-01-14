@@ -16,6 +16,7 @@ use windows::Win32::System::Threading::{
     OpenEventA, WaitForSingleObject, SYNCHRONIZATION_SYNCHRONIZE,
 };
 use windows::Win32::System::WindowsProgramming::INFINITE;
+use yaml_rust::Yaml;
 
 static DATAVALIDEVENTNAME: &[u8] = b"Local\\IRSDKDataValidEvent";
 static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName";
@@ -27,6 +28,7 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 pub struct Client {
     vars_at_buf_len: i32,
     vars: Arc<VarHeaders>,
+    session_info_cache: SessionInfoCache,
     last_tick_count: i32,
     last_valid_time: Option<SystemTime>,
 
@@ -42,18 +44,19 @@ impl Client {
         let shared_memory = shared_memory.await;
         let data_valid_event = data_valid_event.await;
 
+        while !shared_memory.is_header_connected() {
+            data_valid_event.wait().await;
+        }
+
         let sdk_version = shared_memory.header().ver;
         if sdk_version != IRSDK_VER {
             bail!("iRacing SDK version mismatch: expected {IRSDK_VER}, received {sdk_version}");
         }
 
-        while !shared_memory.is_header_connected() {
-            data_valid_event.wait().await;
-        }
-
         Ok(Client {
             vars_at_buf_len: -1,
             vars: Arc::new(HashMap::new()),
+            session_info_cache: SessionInfoCache::default(),
             last_tick_count: i32::MAX,
             last_valid_time: None,
             shared_memory,
@@ -109,8 +112,7 @@ impl Client {
                 self.last_tick_count = tick_count;
                 self.last_valid_time = Some(SystemTime::now());
                 return if self.is_connected() {
-                    let session_info =
-                        Arc::new(parse_session_info(self.shared_memory.raw_session_info()).ok()?);
+                    let session_info = self.session_info_cache.get(&self.shared_memory).ok()?;
                     Some(SimState::new(
                         Arc::new(header.clone()),
                         Arc::clone(&self.vars),
@@ -141,6 +143,25 @@ impl Client {
             Err(_) => return false,
         };
         elapsed < CLIENT_TIMEOUT
+    }
+}
+
+#[derive(Default)]
+struct SessionInfoCache {
+    content: Option<(i32, Arc<Yaml>)>,
+}
+
+impl SessionInfoCache {
+    fn get(&mut self, shared_memory: &SharedMemory) -> Result<Arc<Yaml>> {
+        let new_id = shared_memory.header().session_info_update;
+        if let Some((old_id, data)) = &self.content {
+            if new_id == *old_id {
+                return Ok(Arc::clone(data));
+            }
+        }
+        let session_info = Arc::new(parse_session_info(shared_memory.raw_session_info())?);
+        self.content = Some((new_id, Arc::clone(&session_info)));
+        Ok(session_info)
     }
 }
 
