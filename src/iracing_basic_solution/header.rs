@@ -1,5 +1,6 @@
 use super::constants::{MAX_BUFS, MAX_DESC, MAX_STRING};
 use crate::iracing::string_decoding::cp1252_to_string;
+use std::collections::HashMap;
 
 #[repr(C)]
 #[derive(Clone, Debug, Default)]
@@ -86,6 +87,8 @@ pub struct VarHeader {
     /// something like "kg/m^2"
     pub unit: String,
 }
+
+pub type VarHeaders = HashMap<String, VarHeader>;
 
 impl VarHeader {
     pub(crate) fn from_raw(raw: &VarHeaderRaw) -> Option<Self> {

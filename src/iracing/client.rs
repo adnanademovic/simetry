@@ -1,17 +1,15 @@
-use super::util::{SafeFileView, SafeHandle};
-use crate::iracing::string_decoding::cp1252_to_string;
-use crate::iracing_basic_solution::header::{Header, VarBuf, VarHeader, VarHeaderRaw};
-use crate::iracing_basic_solution::DataPoint;
-use anyhow::{bail, Result};
+use crate::iracing::util::{SafeFileView, SafeHandle};
+use crate::iracing::SimState;
+use crate::iracing_basic_solution::header::{Header, VarBuf, VarHeader, VarHeaderRaw, VarHeaders};
 use std::collections::HashMap;
 use std::slice::from_raw_parts;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use windows::core::PCSTR;
 use windows::Win32::System::Memory::{MapViewOfFile, OpenFileMappingA, FILE_MAP_READ};
 use windows::Win32::System::Threading::{
     OpenEventA, WaitForSingleObject, SYNCHRONIZATION_SYNCHRONIZE,
 };
-use yaml_rust::{Yaml, YamlLoader};
 
 static DATAVALIDEVENTNAME: &[u8] = b"Local\\IRSDKDataValidEvent";
 static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName";
@@ -21,8 +19,8 @@ const STATUS_CONNECTED_FLAG: i32 = 1;
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct Client {
-    data: Option<(Header, Vec<u8>)>,
-    vars: HashMap<String, VarHeader>,
+    vars_at_buf_len: i32,
+    vars: Arc<VarHeaders>,
     last_tick_count: i32,
     last_valid_time: SystemTime,
 
@@ -36,8 +34,8 @@ impl Client {
         let data_valid_event = DataValidEvent::connect();
 
         Self {
-            data: None,
-            vars: HashMap::new(),
+            vars_at_buf_len: -1,
+            vars: Arc::new(HashMap::new()),
             last_tick_count: i32::MAX,
             last_valid_time: SystemTime::UNIX_EPOCH,
             shared_memory: shared_memory.await,
@@ -57,39 +55,27 @@ impl Client {
         elapsed < CLIENT_TIMEOUT
     }
 
-    pub fn wait_for_data(&mut self, timeout: Duration) -> bool {
-        if self.get_new_data() {
-            return true;
+    pub fn wait_for_sim_state(&mut self, timeout: Duration) -> Option<SimState> {
+        let sim_state = self.get_new_sim_state();
+        if sim_state.is_some() {
+            return sim_state;
         }
 
         self.data_valid_event.wait_with_timeout(timeout);
 
-        self.get_new_data()
+        self.get_new_sim_state()
     }
 
-    fn get_new_data(&mut self) -> bool {
+    fn get_new_sim_state(&mut self) -> Option<SimState> {
         let header = self.shared_memory.header();
 
-        let buffer_size_changed = match self.data {
-            None => true,
-            Some((ref h, _)) => h.buf_len != header.buf_len,
-        };
-
-        if buffer_size_changed {
-            let var_headers = self.shared_memory.raw_var_headers();
-            self.vars = var_headers
-                .iter()
-                .filter_map(|var_header_raw| {
-                    let var_header = VarHeader::from_raw(var_header_raw)?;
-                    Some((var_header.name.clone(), var_header))
-                })
-                .collect()
+        if self.vars_at_buf_len != header.buf_len {
+            self.vars = Arc::new(self.shared_memory.get_var_headers());
         }
 
         if header.status & STATUS_CONNECTED_FLAG == 0 {
-            self.data = None;
             self.last_tick_count = i32::MAX;
-            return false;
+            return None;
         }
 
         let mut latest_buffer_idx = 0;
@@ -103,7 +89,7 @@ impl Client {
 
         if self.last_tick_count >= buffer.tick_count {
             self.last_tick_count = buffer.tick_count;
-            return false;
+            return None;
         }
 
         // Two attempts to retrieve data
@@ -113,39 +99,20 @@ impl Client {
             if tick_count == buffer.tick_count {
                 self.last_tick_count = tick_count;
                 self.last_valid_time = SystemTime::now();
-                self.data = Some((header.clone(), data.to_vec()));
-                return true;
+                return if self.is_connected() {
+                    Some(SimState::new(
+                        header.clone(),
+                        Arc::clone(&self.vars),
+                        data.to_vec(),
+                        self.shared_memory.raw_session_info().to_vec(),
+                    ))
+                } else {
+                    None
+                };
             }
         }
 
-        false
-    }
-
-    pub fn get_data(&self) -> Option<DataPoint> {
-        if !self.is_connected() {
-            return None;
-        }
-        let vars = &self.vars;
-        let (header, raw_data) = self.data.as_ref()?;
-        Some(DataPoint {
-            vars,
-            header,
-            raw_data,
-        })
-    }
-
-    pub fn get_session_info_string(&self) -> Result<String> {
-        let raw = self.shared_memory.raw_session_info();
-        Ok(cp1252_to_string(raw)?)
-    }
-
-    pub fn get_session_info_yaml(&self) -> Result<Yaml> {
-        let data_string = self.get_session_info_string()?;
-        let mut items = YamlLoader::load_from_str(&data_string)?;
-        if items.is_empty() {
-            bail!("Session info did not contain any items");
-        }
-        Ok(items.swap_remove(0))
+        None
     }
 }
 
@@ -209,6 +176,16 @@ impl SharedMemory {
                 header.num_vars as usize,
             )
         }
+    }
+
+    fn get_var_headers(&self) -> VarHeaders {
+        self.raw_var_headers()
+            .iter()
+            .filter_map(|var_header_raw| {
+                let var_header = VarHeader::from_raw(var_header_raw)?;
+                Some((var_header.name.clone(), var_header))
+            })
+            .collect()
     }
 
     fn data(&self, header: &Header, buffer: &VarBuf) -> &[u8] {
