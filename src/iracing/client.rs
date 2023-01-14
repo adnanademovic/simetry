@@ -234,7 +234,7 @@ impl SharedMemory {
         self.raw_var_headers()
             .iter()
             .filter_map(|var_header_raw| {
-                let var_header = VarHeader::from_raw(var_header_raw)?;
+                let var_header = VarHeader::from_raw(var_header_raw).ok()?;
                 Some((var_header.name.clone(), var_header))
             })
             .collect()

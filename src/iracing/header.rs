@@ -1,4 +1,5 @@
 use crate::iracing::string_decoding::cp1252_to_string;
+use anyhow::{bail, Result};
 use std::collections::HashMap;
 
 const MAX_BUFS: usize = 4;
@@ -96,13 +97,13 @@ pub struct VarHeader {
 pub type VarHeaders = HashMap<String, VarHeader>;
 
 impl VarHeader {
-    pub(crate) fn from_raw(raw: &VarHeaderRaw) -> Option<Self> {
-        Some(Self {
+    pub(crate) fn from_raw(raw: &VarHeaderRaw) -> Result<Self> {
+        Ok(Self {
             var_type: VarType::from_raw(raw.var_type)?,
             offset: raw.offset as usize,
             count: raw.count as usize,
             count_as_time: raw.count_as_time != 0,
-            name: cp1252_to_string(&raw.name).ok()?,
+            name: cp1252_to_string(&raw.name)?,
             desc: cp1252_to_string(&raw.desc).unwrap_or_default(),
             unit: cp1252_to_string(&raw.unit).unwrap_or_default(),
         })
@@ -123,15 +124,15 @@ pub enum VarType {
 }
 
 impl VarType {
-    fn from_raw(raw: i32) -> Option<VarType> {
-        Some(match raw {
+    fn from_raw(raw: i32) -> Result<VarType> {
+        Ok(match raw {
             0 => VarType::Char,
             1 => VarType::Bool,
             2 => VarType::Int,
             3 => VarType::BitField,
             4 => VarType::Float,
             5 => VarType::Double,
-            _ => return None,
+            _ => bail!("Invalid data type ID: {raw}"),
         })
     }
 

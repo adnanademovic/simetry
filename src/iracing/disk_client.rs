@@ -41,7 +41,7 @@ impl DiskClient {
             (0..header.num_vars)
                 .filter_map(|_| {
                     let raw: VarHeaderRaw = read_struct(&mut file).ok()?;
-                    let header = VarHeader::from_raw(&raw)?;
+                    let header = VarHeader::from_raw(&raw).ok()?;
                     Some((header.name.clone(), header))
                 })
                 .collect(),
