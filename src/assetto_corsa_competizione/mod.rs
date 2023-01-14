@@ -2,12 +2,13 @@ use crate::assetto_corsa_competizione::shared_memory_data::{
     PageFileGraphics, PageFilePhysics, PageFileStatic,
 };
 use crate::windows_util::SharedMemory;
-pub use anyhow::Result;
+use anyhow::Result;
 pub use data::{
     Aids, CarDamage, FlagType, GlobalFlags, Graphics, LapTiming, MfdPitstop, Penalty, Physics,
     RainIntensity, SessionType, StaticData, Status, Time, TrackGripStatus, Vector3, WheelInfo,
     Wheels,
 };
+use std::sync::Arc;
 use std::time::Duration;
 
 mod constants;
@@ -19,19 +20,21 @@ pub struct SharedMemoryClient {
     static_data: StaticData,
     physics_data: SharedMemory,
     graphics_data: SharedMemory,
+    last_physics: Arc<Physics>,
+    last_graphics: Arc<Graphics>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SimState {
+    pub physics: Arc<Physics>,
+    pub graphics: Arc<Graphics>,
 }
 
 impl SharedMemoryClient {
     pub async fn connect() -> Result<Self> {
         let poll_delay = Duration::from_millis(250);
         let graphics_data = SharedMemory::connect(b"Local\\acpmf_graphics\0", poll_delay).await;
-        loop {
-            let status: Status = unsafe { graphics_data.get_as::<PageFileGraphics>() }
-                .status
-                .into();
-            if status != Status::Off {
-                break;
-            }
+        while !Self::is_connected(&graphics_data) {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
 
@@ -43,40 +46,73 @@ impl SharedMemoryClient {
         }
         .clone()
         .into();
+        let last_physics = Arc::new(Self::physics(&physics_data));
+        let last_graphics = Arc::new(Self::graphics(&physics_data));
         Ok(Self {
             static_data,
-            physics_data: physics_data,
-            graphics_data: graphics_data,
+            physics_data,
+            graphics_data,
+            last_physics,
+            last_graphics,
         })
     }
 
-    pub fn is_connected(&self) -> bool {
-        let status: Status = unsafe { self.graphics_data.get_as::<PageFileGraphics>() }
-            .status
-            .into();
-        status != Status::Off
+    pub async fn next_sim_state(&mut self) -> Option<SimState> {
+        loop {
+            if !Self::is_connected(&self.graphics_data) {
+                return None;
+            }
+            let mut changed = false;
+            let physics_packet_id =
+                unsafe { self.physics_data.get_as::<PageFilePhysics>().packet_id };
+            if self.last_physics.packet_id != physics_packet_id {
+                changed = true;
+                self.last_physics = Arc::new(Self::physics(&self.physics_data));
+            }
+            let graphics_packet_id =
+                unsafe { self.graphics_data.get_as::<PageFilePhysics>().packet_id };
+            if self.last_graphics.packet_id != graphics_packet_id {
+                changed = true;
+                self.last_graphics = Arc::new(Self::graphics(&self.graphics_data));
+            }
+            if changed {
+                return Some(SimState {
+                    physics: Arc::clone(&self.last_physics),
+                    graphics: Arc::clone(&self.last_graphics),
+                });
+            } else {
+                tokio::time::sleep(Duration::from_millis(2)).await;
+            }
+        }
     }
 
     pub fn static_data(&self) -> &StaticData {
         &self.static_data
     }
 
-    pub fn physics(&self) -> Physics {
+    fn is_connected(graphics_data: &SharedMemory) -> bool {
+        let status: Status = unsafe { graphics_data.get_as::<PageFileGraphics>() }
+            .status
+            .into();
+        status != Status::Off
+    }
+
+    fn physics(physics_data: &SharedMemory) -> Physics {
         loop {
-            let packet_id_1 = unsafe { self.physics_data.get_as::<PageFilePhysics>().packet_id };
-            let data = unsafe { self.physics_data.get_as::<PageFilePhysics>() }.clone();
-            let packet_id_2 = unsafe { self.physics_data.get_as::<PageFilePhysics>().packet_id };
+            let packet_id_1 = unsafe { physics_data.get_as::<PageFilePhysics>().packet_id };
+            let data = unsafe { physics_data.get_as::<PageFilePhysics>() }.clone();
+            let packet_id_2 = unsafe { physics_data.get_as::<PageFilePhysics>().packet_id };
             if packet_id_1 == packet_id_2 {
                 return data.into();
             }
         }
     }
 
-    pub fn graphics(&self) -> Graphics {
+    fn graphics(graphics_data: &SharedMemory) -> Graphics {
         loop {
-            let packet_id_1 = unsafe { self.graphics_data.get_as::<PageFileGraphics>().packet_id };
-            let data = unsafe { self.graphics_data.get_as::<PageFileGraphics>() }.clone();
-            let packet_id_2 = unsafe { self.graphics_data.get_as::<PageFileGraphics>().packet_id };
+            let packet_id_1 = unsafe { graphics_data.get_as::<PageFileGraphics>().packet_id };
+            let data = unsafe { graphics_data.get_as::<PageFileGraphics>() }.clone();
+            let packet_id_2 = unsafe { graphics_data.get_as::<PageFileGraphics>().packet_id };
             if packet_id_1 == packet_id_2 {
                 return data.into();
             }
