@@ -15,7 +15,7 @@ async fn main() {
             if !client.wait_for_data(Duration::from_millis(16)) {
                 continue;
             }
-            let data = match client.data() {
+            let data = match client.get_data() {
                 None => continue,
                 Some(v) => v,
             };
