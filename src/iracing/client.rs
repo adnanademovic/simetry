@@ -1,4 +1,6 @@
+use crate::iracing::constants::IRSDK_VER;
 use crate::iracing::header::{Header, VarBuf};
+use crate::iracing::session_info::parse_session_info;
 use crate::iracing::util::{SafeFileView, SafeHandle};
 use crate::iracing::SimState;
 use crate::iracing_basic_solution::header::{VarHeader, VarHeaderRaw, VarHeaders};
@@ -21,8 +23,6 @@ static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName";
 const STATUS_CONNECTED_FLAG: i32 = 1;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(30);
-
-const IRSDK_VER: i32 = 2;
 
 pub struct Client {
     vars_at_buf_len: i32,
@@ -109,11 +109,13 @@ impl Client {
                 self.last_tick_count = tick_count;
                 self.last_valid_time = Some(SystemTime::now());
                 return if self.is_connected() {
+                    let session_info =
+                        Arc::new(parse_session_info(self.shared_memory.raw_session_info()).ok()?);
                     Some(SimState::new(
-                        header.clone(),
+                        Arc::new(header.clone()),
                         Arc::clone(&self.vars),
                         data.to_vec(),
-                        self.shared_memory.raw_session_info().to_vec(),
+                        session_info,
                     ))
                 } else {
                     None

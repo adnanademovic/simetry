@@ -1,31 +1,23 @@
 use crate::iracing::header::Header;
-use crate::iracing::string_decoding::cp1252_to_string;
 use crate::iracing_basic_solution::header::{VarHeader, VarHeaders, VarType};
 use crate::iracing_basic_solution::{Value, VarData};
-use anyhow::{bail, Result};
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
-use yaml_rust::{Yaml, YamlLoader};
+use yaml_rust::Yaml;
 
-// TODO: implement debug that's aware of raw data content
 #[derive(Clone)]
 pub struct SimState {
-    header: Header,
+    header: Arc<Header>,
     variables: Arc<VarHeaders>,
     raw_data: Vec<u8>,
-    raw_session_info: Vec<u8>,
+    session_info: Arc<Yaml>,
 }
 
 impl Debug for SimState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SimState")
             .field("header", &self.header)
-            .field(
-                "session_info",
-                &self
-                    .get_session_info_string()
-                    .unwrap_or_else(|_| format!("invalid data: {:?}", self.raw_session_info)),
-            )
+            .field("session_info", &self.session_info)
             .field("data", &DataDebugPrinter(self))
             .finish()
     }
@@ -33,16 +25,16 @@ impl Debug for SimState {
 
 impl SimState {
     pub(super) fn new(
-        header: Header,
+        header: Arc<Header>,
         variables: Arc<VarHeaders>,
         raw_data: Vec<u8>,
-        raw_session_info: Vec<u8>,
+        session_info: Arc<Yaml>,
     ) -> Self {
         Self {
             header,
             variables,
             raw_data,
-            raw_session_info,
+            session_info,
         }
     }
 
@@ -62,21 +54,16 @@ impl SimState {
         self.read_at(idx, self.variables.get(name)?)
     }
 
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+
     pub fn variables(&self) -> &VarHeaders {
         &self.variables
     }
 
-    pub fn get_session_info_string(&self) -> Result<String> {
-        Ok(cp1252_to_string(&self.raw_session_info)?)
-    }
-
-    pub fn get_session_info_yaml(&self) -> Result<Yaml> {
-        let data_string = self.get_session_info_string()?;
-        let mut items = YamlLoader::load_from_str(&data_string)?;
-        if items.is_empty() {
-            bail!("Session info did not contain any items");
-        }
-        Ok(items.swap_remove(0))
+    pub fn session_info(&self) -> &Yaml {
+        &self.session_info
     }
 }
 
