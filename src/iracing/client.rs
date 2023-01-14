@@ -1,8 +1,8 @@
 use crate::iracing::constants::IRSDK_VER;
 use crate::iracing::header::{VarBuf, VarHeaderRaw};
 use crate::iracing::session_info::parse_session_info;
-use crate::iracing::util::{SafeFileView, SafeHandle};
 use crate::iracing::{Header, SimState, VarHeader, VarHeaders};
+use crate::windows_util;
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::slice::from_raw_parts;
@@ -10,7 +10,6 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::task::spawn_blocking;
 use windows::core::PCSTR;
-use windows::Win32::System::Memory::{MapViewOfFile, OpenFileMappingA, FILE_MAP_READ};
 use windows::Win32::System::Threading::{
     OpenEventA, WaitForSingleObject, SYNCHRONIZATION_SYNCHRONIZE,
 };
@@ -44,7 +43,9 @@ impl Client {
         let data_valid_event = data_valid_event.await;
 
         while !shared_memory.is_header_connected() {
-            data_valid_event.wait().await;
+            data_valid_event
+                .wait(Some(Duration::from_millis(250)))
+                .await;
         }
 
         let sdk_version = shared_memory.header().ver;
@@ -73,7 +74,9 @@ impl Client {
                 return Some(sim_state);
             }
 
-            self.data_valid_event.wait().await;
+            self.data_valid_event
+                .wait(Some(Duration::from_millis(250)))
+                .await;
         }
     }
 
@@ -164,55 +167,15 @@ impl SessionInfoCache {
     }
 }
 
-struct SharedMemory {
-    _handle: SafeHandle,
-    file_view: SafeFileView,
-}
+struct SharedMemory(windows_util::SharedMemory);
 
 impl SharedMemory {
     async fn connect() -> Self {
-        let poll_delay = Duration::from_millis(250);
-
-        let handle;
-        loop {
-            match unsafe {
-                OpenFileMappingA(
-                    FILE_MAP_READ.0,
-                    false,
-                    PCSTR::from_raw(MEMMAPFILENAME.as_ptr()),
-                )
-            }
-            .ok()
-            .and_then(SafeHandle::new)
-            {
-                Some(val) => {
-                    handle = val;
-                    break;
-                }
-                None => tokio::time::sleep(poll_delay).await,
-            }
-        }
-
-        let file_view;
-        loop {
-            match SafeFileView::new(unsafe { MapViewOfFile(handle.get(), FILE_MAP_READ, 0, 0, 0) })
-            {
-                Some(val) => {
-                    file_view = val;
-                    break;
-                }
-                None => tokio::time::sleep(poll_delay).await,
-            }
-        }
-
-        Self {
-            _handle: handle,
-            file_view,
-        }
+        Self(windows_util::SharedMemory::connect(MEMMAPFILENAME, Duration::from_millis(250)).await)
     }
 
     fn header(&self) -> &Header {
-        unsafe { &*(self.file_view.get() as *const Header) }
+        unsafe { &*(self.0.get() as *const Header) }
     }
 
     fn is_header_connected(&self) -> bool {
@@ -223,7 +186,7 @@ impl SharedMemory {
         let header = self.header();
         unsafe {
             from_raw_parts(
-                (self.file_view.get() as *const u8).offset(header.var_header_offset as isize)
+                (self.0.get() as *const u8).offset(header.var_header_offset as isize)
                     as *const VarHeaderRaw,
                 header.num_vars as usize,
             )
@@ -243,7 +206,7 @@ impl SharedMemory {
     fn data(&self, header: &Header, buffer: &VarBuf) -> &[u8] {
         unsafe {
             from_raw_parts(
-                (self.file_view.get() as *const u8).offset(buffer.buf_offset as isize),
+                (self.0.get() as *const u8).offset(buffer.buf_offset as isize),
                 header.buf_len as usize,
             )
         }
@@ -253,7 +216,7 @@ impl SharedMemory {
         let header = self.header();
         unsafe {
             from_raw_parts(
-                (self.file_view.get() as *const u8).offset(header.session_info_offset as isize),
+                (self.0.get() as *const u8).offset(header.session_info_offset as isize),
                 header.session_info_len as usize,
             )
         }
@@ -261,7 +224,7 @@ impl SharedMemory {
 }
 
 struct DataValidEvent {
-    handle: SafeHandle,
+    handle: windows_util::SafeHandle,
 }
 
 impl DataValidEvent {
@@ -276,7 +239,7 @@ impl DataValidEvent {
                 )
             }
             .ok()
-            .and_then(SafeHandle::new)
+            .and_then(windows_util::SafeHandle::new)
             {
                 Some(handle) => {
                     return Self { handle };
@@ -286,18 +249,11 @@ impl DataValidEvent {
         }
     }
 
-    #[allow(dead_code)]
-    fn wait_with_timeout(&self, timeout: Duration) {
-        unsafe {
-            WaitForSingleObject(self.handle.get(), timeout.as_millis() as u32);
-        }
-    }
-
-    async fn wait(&self) {
-        let handle = self.handle.get();
-        // TODO: show some warning on error
+    async fn wait(&self, timeout: Option<Duration>) {
+        let handle = unsafe { self.handle.get() };
+        let millis = timeout.map_or(INFINITE, |v| v.as_millis() as u32);
         spawn_blocking(move || unsafe {
-            WaitForSingleObject(handle, INFINITE);
+            WaitForSingleObject(handle, millis);
         })
         .await
         .ok();

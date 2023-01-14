@@ -11,7 +11,6 @@ mod header;
 mod session_info;
 mod sim_state;
 mod string_decoding;
-mod util;
 mod var_data;
 
 pub use client::Client;
