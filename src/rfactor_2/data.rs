@@ -1,8 +1,9 @@
 use crate::rfactor_2::shared_memory_data::{
-    PageExtended, PageForceFeedback, PageHeader, PageMultiRules, PagePitInfo, PageRules,
-    PageScoring, PageScoringInfo, PageTelemetry, PageTrackRules, PageTrackRulesAction,
-    PageTrackRulesParticipant, PageVec3, PageVehicleScoring, PageVehicleTelemetry, PageWeather,
-    PageWheelTelemetry, MAX_MAPPED_VEHICLES,
+    PageExtended, PageForceFeedback, PageHeader, PageMultiRules, PagePhysicsOptions, PagePitInfo,
+    PageRules, PageScoring, PageScoringInfo, PageSessionTransitionCapture, PageTelemetry,
+    PageTrackRules, PageTrackRulesAction, PageTrackRulesParticipant, PageTrackedDamage, PageVec3,
+    PageVehScoringCapture, PageVehicleScoring, PageVehicleTelemetry, PageWeather,
+    PageWheelTelemetry, MAX_MAPPED_IDS, MAX_MAPPED_VEHICLES,
 };
 use crate::windows_util::cp1252_to_string;
 use anyhow::{bail, Error, Result};
@@ -600,10 +601,165 @@ pub struct Weather {
     pub packet_id: PacketId,
 }
 
-/// Not supported yet.
 #[derive(Clone, Debug)]
 pub struct Extended {
     pub packet_id: PacketId,
+
+    /// API version
+    pub version: String,
+    /// Is 64bit plugin?
+    pub is64bit: u8,
+
+    /// Physics options (updated on session start)
+    pub physics: PhysicsOptions,
+
+    /// Damage tracking for each vehicle
+    ///
+    /// Indexed by mID % MappedBufferHeader::MAX_MAPPED_IDS.
+    pub tracked_damages: [TrackedDamage; MAX_MAPPED_IDS],
+
+    // Function call based flags:
+    /// in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
+    pub in_realtime_fc: u8,
+    /// multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
+    pub multimedia_thread_started: u8,
+    /// simulation thread started (reported via ThreadStarted/ThreadStopped calls).
+    pub simulation_thread_started: u8,
+
+    /// Set to true on Session Started, set to false on Session Ended.
+    pub session_started: u8,
+    /// Ticks when session started.
+    pub ticks_session_started: i64,
+    /// Ticks when session ended.
+    pub ticks_session_ended: i64,
+    /// Contains partial internals capture at session transition time.
+    pub session_transition_capture: SessionTransitionCapture,
+
+    /// Captured non-empty MessageInfoV01::mText message.
+    pub displayed_message_update_capture: String,
+
+    /// Direct Memory access stuff
+    pub direct_memory_access_enabled: u8,
+
+    /// Ticks when status message was updated,
+    pub ticks_status_message_updated: i64,
+    pub status_message: String,
+
+    /// Ticks when last message history message was updated,
+    pub ticks_last_history_message_updated: i64,
+    pub last_history_message: String,
+
+    /// speed limit m/s.
+    pub current_pit_speed_limit: f32,
+
+    /// Is Stock Car Rules plugin enabled?
+    pub scr_plugin_enabled: u8,
+    /// Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
+    pub scr_plugin_double_file_type: i32,
+
+    /// Ticks when last LSI phase message was updated.
+    pub ticks_lsi_phase_message_updated: i64,
+    pub lsi_phase_message: String,
+
+    /// Ticks when last LSI pit state message was updated.
+    pub ticks_lsi_pit_state_message_updated: i64,
+    pub lsi_pit_state_message: String,
+
+    /// Ticks when last LSI order instruction message was updated.
+    pub ticks_lsi_order_instruction_message_updated: i64,
+    pub lsi_order_instruction_message: String,
+
+    /// Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+    pub ticks_lsi_rules_instruction_message_updated: i64,
+    pub lsi_rules_instruction_message: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct PhysicsOptions {
+    /// 0 (off) - 3 (high)
+    pub traction_control: u8,
+    /// 0 (off) - 2 (high)
+    pub anti_lock_brakes: u8,
+    /// 0 (off) - 2 (high)
+    pub stability_control: u8,
+    /// 0 (off), 1 (upshifts), 2 (downshifts), 3 (all)
+    pub auto_shift: u8,
+    /// 0 (off), 1 (on)
+    pub auto_clutch: u8,
+    /// 0 (off), 1 (on)
+    pub invulnerable: u8,
+    /// 0 (off), 1 (on)
+    pub opposite_lock: u8,
+    /// 0 (off) - 3 (high)
+    pub steering_help: u8,
+    /// 0 (off) - 2 (high)
+    pub braking_help: u8,
+    /// 0 (off), 1 (on)
+    pub spin_recovery: u8,
+    /// 0 (off), 1 (on)
+    pub auto_pit: u8,
+    /// 0 (off), 1 (on)
+    pub auto_lift: u8,
+    /// 0 (off), 1 (on)
+    pub auto_blip: u8,
+
+    /// fuel multiplier (0x-7x)
+    pub fuel_mult: u8,
+    /// tire wear multiplier (0x-7x)
+    pub tire_mult: u8,
+    /// mechanical failure setting, 0 (off), 1 (normal), 2 (timescaled)
+    pub mech_fail: u8,
+    /// 0 (off), 1 (on)
+    pub allow_pitcrew_push: u8,
+    /// accidental repeat shift prevention (0-5; see PLR file)
+    pub repeat_shifts: u8,
+    /// for auto-shifters at start of race: 0 (off), 1 (on)
+    pub hold_clutch: u8,
+    /// 0 (off), 1 (on)
+    pub auto_reverse: u8,
+    /// Whether shifting up and down simultaneously equals neutral
+    pub alternate_neutral: u8,
+
+    /// Whether player vehicle is currently under AI control
+    pub ai_control: u8,
+
+    /// time before auto-shifting can resume after recent manual shift
+    pub manual_shift_override_time: f32,
+    /// time before manual shifting can resume after recent auto shift
+    pub auto_shift_override_time: f32,
+    /// 0.0 (off) - 1.0
+    pub speed_sensitive_steering: f32,
+    /// speed (m/s) under which lock gets expanded to full
+    pub steer_ratio_speed: f32,
+}
+
+#[derive(Clone, Debug)]
+pub struct TrackedDamage {
+    /// Max impact magnitude
+    ///
+    /// Tracked on every telemetry update, and reset on visit to pits or Session restart.
+    pub max_impact_magnitude: f64,
+    /// Accumulated impact magnitude
+    ///
+    /// Tracked on every telemetry update, and reset on visit to pits or Session restart.
+    pub accumulated_impact_magnitude: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct SessionTransitionCapture {
+    pub game_phase: u8,
+    pub session: i32,
+
+    pub scoring_vehicles: Vec<VehScoringCapture>,
+}
+
+#[derive(Clone, Debug)]
+pub struct VehScoringCapture {
+    /// slot ID (note that it can be re-used in multiplayer after someone leaves)
+    pub id: i32,
+    pub place: u8,
+    pub is_player: u8,
+    pub finish_status: i8,
 }
 
 impl TryFrom<PageHeader> for PacketId {
@@ -1000,7 +1156,118 @@ impl TryFrom<Box<PageExtended>> for Extended {
 
     fn try_from(value: Box<PageExtended>) -> Result<Extended> {
         let packet_id = value.header.try_into()?;
-        Ok(Self { packet_id })
+        Ok(Self {
+            packet_id,
+            version: cp1252_to_string(&value.version).unwrap_or_default(),
+            is64bit: value.is64bit,
+            physics: (&value.physics).into(),
+            tracked_damages: value.tracked_damages.map(|v| (&v).into()),
+            in_realtime_fc: value.in_realtime_fc,
+            multimedia_thread_started: value.multimedia_thread_started,
+            simulation_thread_started: value.simulation_thread_started,
+            session_started: value.session_started,
+            ticks_session_started: value.ticks_session_started,
+            ticks_session_ended: value.ticks_session_ended,
+            session_transition_capture: (&value.session_transition_capture).into(),
+            displayed_message_update_capture: cp1252_to_string(
+                &value.displayed_message_update_capture,
+            )
+            .unwrap_or_default(),
+            direct_memory_access_enabled: value.direct_memory_access_enabled,
+            ticks_status_message_updated: value.ticks_status_message_updated,
+            status_message: cp1252_to_string(&value.status_message).unwrap_or_default(),
+            ticks_last_history_message_updated: value.ticks_last_history_message_updated,
+            last_history_message: cp1252_to_string(&value.last_history_message).unwrap_or_default(),
+            current_pit_speed_limit: value.current_pit_speed_limit,
+            scr_plugin_enabled: value.scr_plugin_enabled,
+            scr_plugin_double_file_type: value.scr_plugin_double_file_type,
+            ticks_lsi_phase_message_updated: value.ticks_lsi_phase_message_updated,
+            lsi_phase_message: cp1252_to_string(&value.lsi_phase_message).unwrap_or_default(),
+            ticks_lsi_pit_state_message_updated: value.ticks_lsi_pit_state_message_updated,
+            lsi_pit_state_message: cp1252_to_string(&value.lsi_pit_state_message)
+                .unwrap_or_default(),
+            ticks_lsi_order_instruction_message_updated: value
+                .ticks_lsi_order_instruction_message_updated,
+            lsi_order_instruction_message: cp1252_to_string(&value.lsi_order_instruction_message)
+                .unwrap_or_default(),
+            ticks_lsi_rules_instruction_message_updated: value
+                .ticks_lsi_rules_instruction_message_updated,
+            lsi_rules_instruction_message: cp1252_to_string(&value.lsi_rules_instruction_message)
+                .unwrap_or_default(),
+        })
+    }
+}
+
+impl From<&PagePhysicsOptions> for PhysicsOptions {
+    fn from(value: &PagePhysicsOptions) -> Self {
+        Self {
+            traction_control: value.traction_control,
+            anti_lock_brakes: value.anti_lock_brakes,
+            stability_control: value.stability_control,
+            auto_shift: value.auto_shift,
+            auto_clutch: value.auto_clutch,
+            invulnerable: value.invulnerable,
+            opposite_lock: value.opposite_lock,
+            steering_help: value.steering_help,
+            braking_help: value.braking_help,
+            spin_recovery: value.spin_recovery,
+            auto_pit: value.auto_pit,
+            auto_lift: value.auto_lift,
+            auto_blip: value.auto_blip,
+            fuel_mult: value.fuel_mult,
+            tire_mult: value.tire_mult,
+            mech_fail: value.mech_fail,
+            allow_pitcrew_push: value.allow_pitcrew_push,
+            repeat_shifts: value.repeat_shifts,
+            hold_clutch: value.hold_clutch,
+            auto_reverse: value.auto_reverse,
+            alternate_neutral: value.alternate_neutral,
+            ai_control: value.ai_control,
+            manual_shift_override_time: value.manual_shift_override_time,
+            auto_shift_override_time: value.auto_shift_override_time,
+            speed_sensitive_steering: value.speed_sensitive_steering,
+            steer_ratio_speed: value.steer_ratio_speed,
+        }
+    }
+}
+
+impl From<&PageTrackedDamage> for TrackedDamage {
+    fn from(value: &PageTrackedDamage) -> Self {
+        Self {
+            max_impact_magnitude: value.max_impact_magnitude,
+            accumulated_impact_magnitude: value.accumulated_impact_magnitude,
+        }
+    }
+}
+
+impl From<&PageSessionTransitionCapture> for SessionTransitionCapture {
+    fn from(value: &PageSessionTransitionCapture) -> Self {
+        let scoring_vehicles = value
+            .scoring_vehicles
+            .iter()
+            .take(
+                value
+                    .num_scoring_vehicles
+                    .clamp(0, MAX_MAPPED_VEHICLES as i32) as usize,
+            )
+            .map(Into::into)
+            .collect();
+        Self {
+            game_phase: value.game_phase,
+            session: value.session,
+            scoring_vehicles,
+        }
+    }
+}
+
+impl From<&PageVehScoringCapture> for VehScoringCapture {
+    fn from(value: &PageVehScoringCapture) -> Self {
+        Self {
+            id: value.id,
+            place: value.place,
+            is_player: value.is_player,
+            finish_status: value.finish_status,
+        }
     }
 }
 

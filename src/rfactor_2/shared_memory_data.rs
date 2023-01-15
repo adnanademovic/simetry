@@ -1,12 +1,14 @@
 pub const MAX_MAPPED_VEHICLES: usize = 128;
 pub const MAX_MAPPED_IDS: usize = 512;
 
+type String128 = [u8; 128];
 type String96 = [u8; 96];
 type String64 = [u8; 64];
 type String32 = [u8; 32];
 type String24 = [u8; 24];
 type String18 = [u8; 18];
 type String16 = [u8; 16];
+type String12 = [u8; 12];
 type Garbage = u8;
 
 #[repr(C, packed(4))]
@@ -678,4 +680,167 @@ pub struct PageWeather {
 #[derive(Copy, Clone, Debug)]
 pub struct PageExtended {
     pub header: PageHeader,
+
+    /// API version
+    pub version: String12,
+    /// Is 64bit plugin?
+    pub is64bit: u8,
+
+    /// Physics options (updated on session start)
+    pub physics: PagePhysicsOptions,
+
+    /// Damage tracking for each vehicle
+    ///
+    /// Indexed by mID % MappedBufferHeader::MAX_MAPPED_IDS.
+    pub tracked_damages: [PageTrackedDamage; MAX_MAPPED_IDS],
+
+    // Function call based flags:
+    /// in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
+    pub in_realtime_fc: u8,
+    /// multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
+    pub multimedia_thread_started: u8,
+    /// simulation thread started (reported via ThreadStarted/ThreadStopped calls).
+    pub simulation_thread_started: u8,
+
+    /// Set to true on Session Started, set to false on Session Ended.
+    pub session_started: u8,
+    /// Ticks when session started.
+    pub ticks_session_started: i64,
+    /// Ticks when session ended.
+    pub ticks_session_ended: i64,
+    /// Contains partial internals capture at session transition time.
+    pub session_transition_capture: PageSessionTransitionCapture,
+
+    /// Captured non-empty MessageInfoV01::mText message.
+    pub displayed_message_update_capture: String128,
+
+    /// Direct Memory access stuff
+    pub direct_memory_access_enabled: u8,
+
+    /// Ticks when status message was updated,
+    pub ticks_status_message_updated: i64,
+    pub status_message: String128,
+
+    /// Ticks when last message history message was updated,
+    pub ticks_last_history_message_updated: i64,
+    pub last_history_message: String128,
+
+    /// speed limit m/s.
+    pub current_pit_speed_limit: f32,
+
+    /// Is Stock Car Rules plugin enabled?
+    pub scr_plugin_enabled: u8,
+    /// Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
+    pub scr_plugin_double_file_type: i32,
+
+    /// Ticks when last LSI phase message was updated.
+    pub ticks_lsi_phase_message_updated: i64,
+    pub lsi_phase_message: String96,
+
+    /// Ticks when last LSI pit state message was updated.
+    pub ticks_lsi_pit_state_message_updated: i64,
+    pub lsi_pit_state_message: String96,
+
+    /// Ticks when last LSI order instruction message was updated.
+    pub ticks_lsi_order_instruction_message_updated: i64,
+    pub lsi_order_instruction_message: String96,
+
+    /// Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+    pub ticks_lsi_rules_instruction_message_updated: i64,
+    pub lsi_rules_instruction_message: String96,
+}
+
+#[repr(C, packed(4))]
+#[derive(Copy, Clone, Debug)]
+pub struct PagePhysicsOptions {
+    /// 0 (off) - 3 (high)
+    pub traction_control: u8,
+    /// 0 (off) - 2 (high)
+    pub anti_lock_brakes: u8,
+    /// 0 (off) - 2 (high)
+    pub stability_control: u8,
+    /// 0 (off), 1 (upshifts), 2 (downshifts), 3 (all)
+    pub auto_shift: u8,
+    /// 0 (off), 1 (on)
+    pub auto_clutch: u8,
+    /// 0 (off), 1 (on)
+    pub invulnerable: u8,
+    /// 0 (off), 1 (on)
+    pub opposite_lock: u8,
+    /// 0 (off) - 3 (high)
+    pub steering_help: u8,
+    /// 0 (off) - 2 (high)
+    pub braking_help: u8,
+    /// 0 (off), 1 (on)
+    pub spin_recovery: u8,
+    /// 0 (off), 1 (on)
+    pub auto_pit: u8,
+    /// 0 (off), 1 (on)
+    pub auto_lift: u8,
+    /// 0 (off), 1 (on)
+    pub auto_blip: u8,
+
+    /// fuel multiplier (0x-7x)
+    pub fuel_mult: u8,
+    /// tire wear multiplier (0x-7x)
+    pub tire_mult: u8,
+    /// mechanical failure setting, 0 (off), 1 (normal), 2 (timescaled)
+    pub mech_fail: u8,
+    /// 0 (off), 1 (on)
+    pub allow_pitcrew_push: u8,
+    /// accidental repeat shift prevention (0-5; see PLR file)
+    pub repeat_shifts: u8,
+    /// for auto-shifters at start of race: 0 (off), 1 (on)
+    pub hold_clutch: u8,
+    /// 0 (off), 1 (on)
+    pub auto_reverse: u8,
+    /// Whether shifting up and down simultaneously equals neutral
+    pub alternate_neutral: u8,
+
+    /// Whether player vehicle is currently under AI control
+    pub ai_control: u8,
+    unused1: Garbage,
+    unused2: Garbage,
+
+    /// time before auto-shifting can resume after recent manual shift
+    pub manual_shift_override_time: f32,
+    /// time before manual shifting can resume after recent auto shift
+    pub auto_shift_override_time: f32,
+    /// 0.0 (off) - 1.0
+    pub speed_sensitive_steering: f32,
+    /// speed (m/s) under which lock gets expanded to full
+    pub steer_ratio_speed: f32,
+}
+
+#[repr(C, packed(4))]
+#[derive(Copy, Clone, Debug)]
+pub struct PageTrackedDamage {
+    /// Max impact magnitude
+    ///
+    /// Tracked on every telemetry update, and reset on visit to pits or Session restart.
+    pub max_impact_magnitude: f64,
+    /// Accumulated impact magnitude
+    ///
+    /// Tracked on every telemetry update, and reset on visit to pits or Session restart.
+    pub accumulated_impact_magnitude: f64,
+}
+
+#[repr(C, packed(4))]
+#[derive(Copy, Clone, Debug)]
+pub struct PageSessionTransitionCapture {
+    pub game_phase: u8,
+    pub session: i32,
+
+    pub num_scoring_vehicles: i32,
+    pub scoring_vehicles: [PageVehScoringCapture; MAX_MAPPED_VEHICLES],
+}
+
+#[repr(C, packed(4))]
+#[derive(Copy, Clone, Debug)]
+pub struct PageVehScoringCapture {
+    /// slot ID (note that it can be re-used in multiplayer after someone leaves)
+    pub id: i32,
+    pub place: u8,
+    pub is_player: u8,
+    pub finish_status: i8,
 }
