@@ -54,16 +54,16 @@ impl Client {
         let extended = open_file("Extended", config, poll_delay).await;
         Self {
             sim_state_cache: SimState {
-                telemetry: Arc::new(read_when_ready::<PageTelemetry, Telemetry>(&telemetry)),
-                scoring: Arc::new(read_when_ready::<PageScoring, Scoring>(&scoring)),
-                rules: Arc::new(read_when_ready::<PageRules, Rules>(&rules)),
-                multi_rules: Arc::new(read_when_ready::<PageMultiRules, MultiRules>(&multi_rules)),
-                force_feedback: Arc::new(read_when_ready::<PageForceFeedback, ForceFeedback>(
+                telemetry: read_when_ready::<PageTelemetry, Telemetry>(&telemetry),
+                scoring: read_when_ready::<PageScoring, Scoring>(&scoring),
+                rules: read_when_ready::<PageRules, Rules>(&rules),
+                multi_rules: read_when_ready::<PageMultiRules, MultiRules>(&multi_rules),
+                force_feedback: read_when_ready::<PageForceFeedback, ForceFeedback>(
                     &force_feedback,
-                )),
-                pit_info: Arc::new(read_when_ready::<PagePitInfo, PitInfo>(&pit_info)),
-                weather: Arc::new(read_when_ready::<PageWeather, Weather>(&weather)),
-                extended: Arc::new(read_when_ready::<PageExtended, Extended>(&extended)),
+                ),
+                pit_info: read_when_ready::<PagePitInfo, PitInfo>(&pit_info),
+                weather: read_when_ready::<PageWeather, Weather>(&weather),
+                extended: read_when_ready::<PageExtended, Extended>(&extended),
             },
             telemetry,
             scoring,
@@ -76,7 +76,7 @@ impl Client {
         }
     }
 
-    pub fn force_feedback(&self) -> ForceFeedback {
+    pub fn force_feedback(&self) -> Arc<ForceFeedback> {
         read_when_ready::<PageForceFeedback, ForceFeedback>(&self.force_feedback)
     }
 
@@ -86,50 +86,45 @@ impl Client {
 
             if has_update_pending(self.sim_state_cache.telemetry.packet_id, &self.telemetry) {
                 self.sim_state_cache.telemetry =
-                    Arc::new(read_when_ready::<PageTelemetry, Telemetry>(&self.telemetry));
+                    read_when_ready::<PageTelemetry, Telemetry>(&self.telemetry);
                 changed = true;
             }
             if has_update_pending(self.sim_state_cache.scoring.packet_id, &self.scoring) {
                 self.sim_state_cache.scoring =
-                    Arc::new(read_when_ready::<PageScoring, Scoring>(&self.scoring));
+                    read_when_ready::<PageScoring, Scoring>(&self.scoring);
                 changed = true;
             }
             if has_update_pending(self.sim_state_cache.rules.packet_id, &self.rules) {
-                self.sim_state_cache.rules =
-                    Arc::new(read_when_ready::<PageRules, Rules>(&self.rules));
+                self.sim_state_cache.rules = read_when_ready::<PageRules, Rules>(&self.rules);
                 changed = true;
             }
             if has_update_pending(
                 self.sim_state_cache.multi_rules.packet_id,
                 &self.multi_rules,
             ) {
-                self.sim_state_cache.multi_rules = Arc::new(read_when_ready::<
-                    PageMultiRules,
-                    MultiRules,
-                >(&self.multi_rules));
+                self.sim_state_cache.multi_rules =
+                    read_when_ready::<PageMultiRules, MultiRules>(&self.multi_rules);
                 changed = true;
             }
             if has_update_pending(self.sim_state_cache.pit_info.packet_id, &self.pit_info) {
                 self.sim_state_cache.pit_info =
-                    Arc::new(read_when_ready::<PagePitInfo, PitInfo>(&self.pit_info));
+                    read_when_ready::<PagePitInfo, PitInfo>(&self.pit_info);
                 changed = true;
             }
             if has_update_pending(self.sim_state_cache.weather.packet_id, &self.weather) {
                 self.sim_state_cache.weather =
-                    Arc::new(read_when_ready::<PageWeather, Weather>(&self.weather));
+                    read_when_ready::<PageWeather, Weather>(&self.weather);
                 changed = true;
             }
             if has_update_pending(self.sim_state_cache.extended.packet_id, &self.extended) {
                 self.sim_state_cache.extended =
-                    Arc::new(read_when_ready::<PageExtended, Extended>(&self.extended));
+                    read_when_ready::<PageExtended, Extended>(&self.extended);
                 changed = true;
             }
 
             if changed {
                 self.sim_state_cache.force_feedback =
-                    Arc::new(read_when_ready::<PageForceFeedback, ForceFeedback>(
-                        &self.force_feedback,
-                    ));
+                    read_when_ready::<PageForceFeedback, ForceFeedback>(&self.force_feedback);
                 return Some(self.sim_state_cache.clone());
             }
             tokio::time::sleep(Duration::from_millis(1)).await;
@@ -147,10 +142,10 @@ fn has_update_pending(old_id: PacketId, memory: &SharedMemory) -> bool {
         })
 }
 
-fn read_when_ready<Page: Copy, Data: TryFrom<Page>>(memory: &SharedMemory) -> Data {
+fn read_when_ready<Page: Copy, Data: TryFrom<Box<Page>>>(memory: &SharedMemory) -> Arc<Data> {
     loop {
-        if let Ok(data) = unsafe { memory.copy_as::<Page>() }.try_into() {
-            return data;
+        if let Ok(data) = Box::new(unsafe { *memory.get_as::<Page>() }).try_into() {
+            return Arc::new(data);
         }
     }
 }

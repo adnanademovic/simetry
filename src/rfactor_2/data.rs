@@ -299,10 +299,10 @@ impl TryFrom<PageHeader> for PacketId {
     }
 }
 
-impl TryFrom<PageForceFeedback> for ForceFeedback {
+impl TryFrom<Box<PageForceFeedback>> for ForceFeedback {
     type Error = Error;
 
-    fn try_from(value: PageForceFeedback) -> Result<Self> {
+    fn try_from(value: Box<PageForceFeedback>) -> Result<Self> {
         let _packet_id: PacketId = value.ignored_header.try_into()?;
         Ok(Self {
             force_value: value.force_value,
@@ -310,26 +310,26 @@ impl TryFrom<PageForceFeedback> for ForceFeedback {
     }
 }
 
-impl TryFrom<PageTelemetry> for Telemetry {
+impl TryFrom<Box<PageTelemetry>> for Telemetry {
     type Error = Error;
 
-    fn try_from(value: PageTelemetry) -> Result<Telemetry> {
+    fn try_from(value: Box<PageTelemetry>) -> Result<Telemetry> {
         let packet_id = value.header.try_into()?;
         let vehicle_count = value.num_vehicles.clamp(0, MAX_MAPPED_VEHICLES as i32) as usize;
         Ok(Self {
             packet_id,
             vehicles: value
                 .vehicles
-                .into_iter()
+                .iter()
                 .take(vehicle_count)
-                .map(Into::into)
+                .map(|v| v.into())
                 .collect(),
         })
     }
 }
 
-impl From<PageVehicleTelemetry> for VehicleTelemetry {
-    fn from(value: PageVehicleTelemetry) -> Self {
+impl From<&PageVehicleTelemetry> for VehicleTelemetry {
+    fn from(value: &PageVehicleTelemetry) -> Self {
         Self {
             id: value.id,
             delta_time: value.delta_time,
@@ -398,13 +398,13 @@ impl From<PageVehicleTelemetry> for VehicleTelemetry {
             turbo_boost_pressure: value.turbo_boost_pressure,
             physics_to_graphics_offset: value.physics_to_graphics_offset,
             physical_steering_wheel_range: value.physical_steering_wheel_range,
-            wheels: value.wheels.map(Into::into),
+            wheels: value.wheels.map(|v| (&v).into()),
         }
     }
 }
 
-impl From<PageWheelTelemetry> for WheelTelemetry {
-    fn from(value: PageWheelTelemetry) -> Self {
+impl From<&PageWheelTelemetry> for WheelTelemetry {
+    fn from(value: &PageWheelTelemetry) -> Self {
         Self {
             suspension_deflection: value.suspension_deflection,
             ride_height: value.ride_height,
@@ -438,55 +438,55 @@ impl From<PageWheelTelemetry> for WheelTelemetry {
     }
 }
 
-impl TryFrom<PageScoring> for Scoring {
+impl TryFrom<Box<PageScoring>> for Scoring {
     type Error = Error;
 
-    fn try_from(value: PageScoring) -> Result<Scoring> {
+    fn try_from(value: Box<PageScoring>) -> Result<Scoring> {
         let packet_id = value.header.try_into()?;
         Ok(Self { packet_id })
     }
 }
 
-impl TryFrom<PageRules> for Rules {
+impl TryFrom<Box<PageRules>> for Rules {
     type Error = Error;
 
-    fn try_from(value: PageRules) -> Result<Rules> {
+    fn try_from(value: Box<PageRules>) -> Result<Rules> {
         let packet_id = value.header.try_into()?;
         Ok(Self { packet_id })
     }
 }
 
-impl TryFrom<PageMultiRules> for MultiRules {
+impl TryFrom<Box<PageMultiRules>> for MultiRules {
     type Error = Error;
 
-    fn try_from(value: PageMultiRules) -> Result<MultiRules> {
+    fn try_from(value: Box<PageMultiRules>) -> Result<MultiRules> {
         let packet_id = value.header.try_into()?;
         Ok(Self { packet_id })
     }
 }
 
-impl TryFrom<PagePitInfo> for PitInfo {
+impl TryFrom<Box<PagePitInfo>> for PitInfo {
     type Error = Error;
 
-    fn try_from(value: PagePitInfo) -> Result<PitInfo> {
+    fn try_from(value: Box<PagePitInfo>) -> Result<PitInfo> {
         let packet_id = value.header.try_into()?;
         Ok(Self { packet_id })
     }
 }
 
-impl TryFrom<PageWeather> for Weather {
+impl TryFrom<Box<PageWeather>> for Weather {
     type Error = Error;
 
-    fn try_from(value: PageWeather) -> Result<Weather> {
+    fn try_from(value: Box<PageWeather>) -> Result<Weather> {
         let packet_id = value.header.try_into()?;
         Ok(Self { packet_id })
     }
 }
 
-impl TryFrom<PageExtended> for Extended {
+impl TryFrom<Box<PageExtended>> for Extended {
     type Error = Error;
 
-    fn try_from(value: PageExtended) -> Result<Extended> {
+    fn try_from(value: Box<PageExtended>) -> Result<Extended> {
         let packet_id = value.header.try_into()?;
         Ok(Self { packet_id })
     }
