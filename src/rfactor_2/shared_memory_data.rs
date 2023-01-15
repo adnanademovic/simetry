@@ -1,15 +1,15 @@
-use typename::TypeName;
-
 pub const MAX_MAPPED_VEHICLES: usize = 128;
 pub const MAX_MAPPED_IDS: usize = 512;
 
 type String64 = [u8; 64];
+type String32 = [u8; 32];
+type String24 = [u8; 24];
 type String18 = [u8; 18];
 type String16 = [u8; 16];
 type Garbage = u8;
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, Default, TypeName)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct PageVec3 {
     pub x: f64,
     pub y: f64,
@@ -17,7 +17,7 @@ pub struct PageVec3 {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageHeader {
     /// Incremented right before buffer is written to.
     pub version_update_begin: u32,
@@ -26,7 +26,7 @@ pub struct PageHeader {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageForceFeedback {
     pub ignored_header: PageHeader,
 
@@ -35,7 +35,7 @@ pub struct PageForceFeedback {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageTelemetry {
     pub header: PageHeader,
 
@@ -50,7 +50,7 @@ pub struct PageTelemetry {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageVehicleTelemetry {
     // Time
     /// slot ID (note that it can be re-used in multiplayer after someone leaves)    
@@ -216,7 +216,7 @@ pub struct PageVehicleTelemetry {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageWheelTelemetry {
     /// meters
     pub suspension_deflection: f64,
@@ -284,7 +284,7 @@ pub struct PageWheelTelemetry {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageScoring {
     pub header: PageHeader,
 
@@ -292,10 +292,222 @@ pub struct PageScoring {
     ///
     /// 0 means unknown (whole buffer should be considered as updated).
     pub bytes_updated_hint: i32,
+
+    pub scoring_info: PageScoringInfo,
+
+    pub vehicles: [PageVehicleScoring; MAX_MAPPED_VEHICLES],
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
+pub struct PageScoringInfo {
+    /// current track name
+    pub track_name: String64,
+    /// current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
+    pub session: i32,
+    /// current time
+    pub current_et: f64,
+    /// ending time
+    pub end_et: f64,
+    /// maximum laps
+    pub max_laps: i32,
+    /// distance around track
+    pub lap_dist: f64,
+    /// results stream additions since last update (newline-delimited and NULL-terminated)
+    pointer1: [Garbage; 8],
+
+    /// current number of vehicles
+    pub num_vehicles: i32,
+
+    /// Game phases
+    pub game_phase: u8,
+
+    /// Yellow flag states (applies to full-course only)
+    pub yellow_flag_state: i8,
+
+    /// whether there are any local yellows at the moment in each sector (not sure if sector 0 is first or last, so test)
+    pub sector_flag: [i8; 3],
+    /// start light frame (number depends on track)
+    pub start_light: u8,
+    /// number of red lights in start sequence
+    pub num_red_lights: u8,
+    /// in realtime as opposed to at the monitor
+    pub in_realtime: u8,
+    /// player name (including possible multiplayer override)
+    pub player_name: String32,
+    /// may be encoded to be a legal filename
+    pub plr_file_name: String64,
+
+    // weather
+    /// cloud darkness? 0.0-1.0
+    pub dark_cloud: f64,
+    /// raining severity 0.0-1.0
+    pub raining: f64,
+    /// temperature (Celsius)
+    pub ambient_temp: f64,
+    /// temperature (Celsius)
+    pub track_temp: f64,
+    /// wind speed
+    pub wind: PageVec3,
+    /// minimum wetness on main path 0.0-1.0
+    pub min_path_wetness: f64,
+    /// maximum wetness on main path 0.0-1.0
+    pub max_path_wetness: f64,
+
+    // multiplayer
+    /// 1 = server, 2 = client, 3 = server and client
+    pub game_mode: u8,
+    /// is the server password protected
+    pub is_password_protected: u8,
+    /// the port of the server (if on a server)
+    pub server_port: u16,
+    /// the public IP address of the server (if on a server)
+    pub server_public_ip: u32,
+    /// maximum number of vehicles that can be in the session
+    pub max_players: i32,
+    /// name of the server
+    pub server_name: String32,
+    /// start time (seconds since midnight) of the event
+    pub start_et: f32,
+
+    /// average wetness on main path 0.0-1.0
+    pub avg_path_wetness: f64,
+
+    /// Future use
+    expansion: [Garbage; 200],
+
+    /// array of vehicle scoring info's
+    pointer2: [Garbage; 8],
+}
+
+#[repr(C, packed(4))]
+#[derive(Copy, Clone, Debug)]
+pub struct PageVehicleScoring {
+    /// slot ID (note that it can be re-used in multiplayer after someone leaves)
+    pub id: i32,
+    /// driver name
+    pub driver_name: String32,
+    /// vehicle name
+    pub vehicle_name: String64,
+    /// laps completed
+    pub total_laps: i16,
+    /// Sector
+    pub sector: i8,
+    /// Finish status
+    pub finish_status: i8,
+    /// current distance around track
+    pub lap_dist: f64,
+    /// lateral position with respect to *very approximate* "center" path
+    pub path_lateral: f64,
+    /// track edge (w.r.t. "center" path) on same side of track as vehicle
+    pub track_edge: f64,
+
+    /// best sector 1
+    pub best_sector1: f64,
+    /// best sector 2 (plus sector 1)
+    pub best_sector2: f64,
+    /// best lap time
+    pub best_lap_time: f64,
+    /// last sector 1
+    pub last_sector1: f64,
+    /// last sector 2 (plus sector 1)
+    pub last_sector2: f64,
+    /// last lap time
+    pub last_lap_time: f64,
+    /// current sector 1 if valid
+    pub cur_sector1: f64,
+    /// current sector 2 (plus sector 1) if valid
+    pub cur_sector2: f64,
+    // no current laptime because it instantly becomes "last"
+    /// number of pitstops made    
+    pub num_pitstops: i16,
+    /// number of outstanding penalties    
+    pub num_penalties: i16,
+    /// is this the player's vehicle    
+    pub is_player: u8,
+
+    /// Who is in control    
+    pub control: i8,
+    /// between pit entrance and pit exit (not always accurate for remote vehicles)    
+    pub in_pits: u8,
+    /// 1-based position    
+    pub place: u8,
+    /// vehicle class    
+    pub vehicle_class: String32,
+
+    // Dash Indicators
+    /// time behind vehicle in next higher place    
+    pub time_behind_next: f64,
+    /// laps behind vehicle in next higher place    
+    pub laps_behind_next: i32,
+    /// time behind leader    
+    pub time_behind_leader: f64,
+    /// laps behind leader    
+    pub laps_behind_leader: i32,
+    /// time this lap was started    
+    pub lap_start_et: f64,
+
+    // Position and derivatives
+    /// world position in meters    
+    pub pos: PageVec3,
+    /// velocity (meters/sec) in local vehicle coordinates    
+    pub local_vel: PageVec3,
+    /// acceleration (meters/sec^2) in local vehicle coordinates    
+    pub local_accel: PageVec3,
+
+    // Orientation and derivatives
+    /// rows of orientation matrix (use TelemQuat conversions if desired), also converts local    
+    pub ori: [PageVec3; 3],
+    // vehicle vectors into world X, Y, or Z using dot product of rows 0, 1, or 2 respectively
+    /// rotation (radians/sec) in local vehicle coordinates    
+    pub local_rot: PageVec3,
+    /// rotational acceleration (radians/sec^2) in local vehicle coordinates    
+    pub local_rot_accel: PageVec3,
+
+    // tag.2012.03.01 - stopped casting some of these so variables now have names and mExpansion has shrunk, overall size and old data locations should be same
+    /// status of headlights    
+    pub headlights: u8,
+    pub pit_state: u8,
+    /// whether this vehicle is being scored by server (could be off in qualifying or racing heats)    
+    pub server_scored: u8,
+    /// game phases (described below) plus 9=after formation, 10=under yellow, 11=under blue (not used)    
+    pub individual_phase: u8,
+
+    /// 1-based, can be -1 when invalid    
+    pub qualification: i32,
+
+    /// estimated time into lap    
+    pub time_into_lap: f64,
+    /// estimated laptime used for 'time behind' and 'time into lap' (note: this may changed based on vehicle and setup!?)    
+    pub estimated_lap_time: f64,
+
+    /// pit group (same as team name unless pit is shared)    
+    pub pit_group: String24,
+    /// primary flag being shown to vehicle    
+    pub flag: u8,
+    /// whether this car has taken a full-course caution flag at the start/finish line    
+    pub under_yellow: u8,
+    pub count_lap_flag: u8,
+    /// appears to be within the correct garage stall    
+    pub in_garage_stall: u8,
+
+    /// Coded upgrades    
+    pub upgrade_pack: String16,
+
+    /// location of pit in terms of lap distance    
+    pub pit_lap_dist: f32,
+
+    /// sector 1 time from best lap (not necessarily the best sector 1 time)    
+    pub best_lap_sector1: f32,
+    /// sector 2 time from best lap (not necessarily the best sector 2 time)    
+    pub best_lap_sector2: f32,
+
+    /// for future use    
+    expansion: [Garbage; 48],
+}
+
+#[repr(C, packed(4))]
+#[derive(Copy, Clone, Debug)]
 pub struct PageRules {
     pub header: PageHeader,
 
@@ -306,7 +518,7 @@ pub struct PageRules {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageMultiRules {
     pub header: PageHeader,
 
@@ -317,19 +529,19 @@ pub struct PageMultiRules {
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PagePitInfo {
     pub header: PageHeader,
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageWeather {
     pub header: PageHeader,
 }
 
 #[repr(C, packed(4))]
-#[derive(Copy, Clone, Debug, TypeName)]
+#[derive(Copy, Clone, Debug)]
 pub struct PageExtended {
     pub header: PageHeader,
 }

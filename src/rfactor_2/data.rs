@@ -1,7 +1,7 @@
 use crate::rfactor_2::shared_memory_data::{
     PageExtended, PageForceFeedback, PageHeader, PageMultiRules, PagePitInfo, PageRules,
-    PageScoring, PageTelemetry, PageVec3, PageVehicleTelemetry, PageWeather, PageWheelTelemetry,
-    MAX_MAPPED_VEHICLES,
+    PageScoring, PageScoringInfo, PageTelemetry, PageVec3, PageVehicleScoring,
+    PageVehicleTelemetry, PageWeather, PageWheelTelemetry, MAX_MAPPED_VEHICLES,
 };
 use crate::windows_util::cp1252_to_string;
 use anyhow::{bail, Error, Result};
@@ -261,6 +261,205 @@ pub struct WheelTelemetry {
 #[derive(Clone, Debug)]
 pub struct Scoring {
     pub packet_id: PacketId,
+
+    pub scoring_info: ScoringInfo,
+
+    pub vehicles: Vec<VehicleScoring>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ScoringInfo {
+    /// current track name
+    pub track_name: String,
+    /// current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13=race)
+    pub session: i32,
+    /// current time
+    pub current_et: f64,
+    /// ending time
+    pub end_et: f64,
+    /// maximum laps
+    pub max_laps: i32,
+    /// distance around track
+    pub lap_dist: f64,
+
+    /// current number of vehicles
+    pub num_vehicles: i32,
+
+    /// Game phases
+    pub game_phase: u8,
+
+    /// Yellow flag states (applies to full-course only)
+    pub yellow_flag_state: i8,
+
+    /// whether there are any local yellows at the moment in each sector (not sure if sector 0 is first or last, so test)
+    pub sector_flag: [i8; 3],
+    /// start light frame (number depends on track)
+    pub start_light: u8,
+    /// number of red lights in start sequence
+    pub num_red_lights: u8,
+    /// in realtime as opposed to at the monitor
+    pub in_realtime: u8,
+    /// player name (including possible multiplayer override)
+    pub player_name: String,
+    /// may be encoded to be a legal filename
+    pub plr_file_name: String,
+
+    // weather
+    /// cloud darkness? 0.0-1.0
+    pub dark_cloud: f64,
+    /// raining severity 0.0-1.0
+    pub raining: f64,
+    /// temperature (Celsius)
+    pub ambient_temp: f64,
+    /// temperature (Celsius)
+    pub track_temp: f64,
+    /// wind speed
+    pub wind: Vec3,
+    /// minimum wetness on main path 0.0-1.0
+    pub min_path_wetness: f64,
+    /// maximum wetness on main path 0.0-1.0
+    pub max_path_wetness: f64,
+
+    // multiplayer
+    /// 1 = server, 2 = client, 3 = server and client
+    pub game_mode: u8,
+    /// is the server password protected
+    pub is_password_protected: u8,
+    /// the port of the server (if on a server)
+    pub server_port: u16,
+    /// the public IP address of the server (if on a server)
+    pub server_public_ip: u32,
+    /// maximum number of vehicles that can be in the session
+    pub max_players: i32,
+    /// name of the server
+    pub server_name: String,
+    /// start time (seconds since midnight) of the event
+    pub start_et: f32,
+
+    /// average wetness on main path 0.0-1.0
+    pub avg_path_wetness: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct VehicleScoring {
+    /// slot ID (note that it can be re-used in multiplayer after someone leaves)
+    pub id: i32,
+    /// driver name
+    pub driver_name: String,
+    /// vehicle name
+    pub vehicle_name: String,
+    /// laps completed
+    pub total_laps: i16,
+    /// Sector
+    pub sector: i8,
+    /// Finish status
+    pub finish_status: i8,
+    /// current distance around track
+    pub lap_dist: f64,
+    /// lateral position with respect to *very approximate* "center" path
+    pub path_lateral: f64,
+    /// track edge (w.r.t. "center" path) on same side of track as vehicle
+    pub track_edge: f64,
+
+    /// best sector 1
+    pub best_sector1: f64,
+    /// best sector 2 (plus sector 1)
+    pub best_sector2: f64,
+    /// best lap time
+    pub best_lap_time: f64,
+    /// last sector 1
+    pub last_sector1: f64,
+    /// last sector 2 (plus sector 1)
+    pub last_sector2: f64,
+    /// last lap time
+    pub last_lap_time: f64,
+    /// current sector 1 if valid
+    pub cur_sector1: f64,
+    /// current sector 2 (plus sector 1) if valid
+    pub cur_sector2: f64,
+    // no current laptime because it instantly becomes "last"
+    /// number of pitstops made    
+    pub num_pitstops: i16,
+    /// number of outstanding penalties    
+    pub num_penalties: i16,
+    /// is this the player's vehicle    
+    pub is_player: u8,
+
+    /// Who is in control    
+    pub control: i8,
+    /// between pit entrance and pit exit (not always accurate for remote vehicles)    
+    pub in_pits: u8,
+    /// 1-based position    
+    pub place: u8,
+    /// vehicle class    
+    pub vehicle_class: String,
+
+    // Dash Indicators
+    /// time behind vehicle in next higher place    
+    pub time_behind_next: f64,
+    /// laps behind vehicle in next higher place    
+    pub laps_behind_next: i32,
+    /// time behind leader    
+    pub time_behind_leader: f64,
+    /// laps behind leader    
+    pub laps_behind_leader: i32,
+    /// time this lap was started    
+    pub lap_start_et: f64,
+
+    // Position and derivatives
+    /// world position in meters    
+    pub pos: Vec3,
+    /// velocity (meters/sec) in local vehicle coordinates    
+    pub local_vel: Vec3,
+    /// acceleration (meters/sec^2) in local vehicle coordinates    
+    pub local_accel: Vec3,
+
+    // Orientation and derivatives
+    /// rows of orientation matrix (use TelemQuat conversions if desired), also converts local    
+    pub ori: [Vec3; 3],
+    // vehicle vectors into world X, Y, or Z using dot product of rows 0, 1, or 2 respectively
+    /// rotation (radians/sec) in local vehicle coordinates    
+    pub local_rot: Vec3,
+    /// rotational acceleration (radians/sec^2) in local vehicle coordinates    
+    pub local_rot_accel: Vec3,
+
+    // tag.2012.03.01 - stopped casting some of these so variables now have names and mExpansion has shrunk, overall size and old data locations should be same
+    /// status of headlights    
+    pub headlights: u8,
+    pub pit_state: u8,
+    /// whether this vehicle is being scored by server (could be off in qualifying or racing heats)    
+    pub server_scored: u8,
+    /// game phases (described below) plus 9=after formation, 10=under yellow, 11=under blue (not used)    
+    pub individual_phase: u8,
+
+    /// 1-based, can be -1 when invalid    
+    pub qualification: i32,
+
+    /// estimated time into lap    
+    pub time_into_lap: f64,
+    /// estimated laptime used for 'time behind' and 'time into lap' (note: this may changed based on vehicle and setup!?)    
+    pub estimated_lap_time: f64,
+
+    /// pit group (same as team name unless pit is shared)    
+    pub pit_group: String,
+    /// primary flag being shown to vehicle    
+    pub flag: u8,
+    /// whether this car has taken a full-course caution flag at the start/finish line    
+    pub under_yellow: u8,
+    pub count_lap_flag: u8,
+    /// appears to be within the correct garage stall    
+    pub in_garage_stall: u8,
+
+    /// Coded upgrades    
+    pub upgrade_pack: String,
+
+    /// location of pit in terms of lap distance    
+    pub pit_lap_dist: f32,
+
+    /// sector 1 time from best lap (not necessarily the best sector 1 time)    
+    pub best_lap_sector1: f32,
+    /// sector 2 time from best lap (not necessarily the best sector 2 time)    
+    pub best_lap_sector2: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -443,7 +642,117 @@ impl TryFrom<Box<PageScoring>> for Scoring {
 
     fn try_from(value: Box<PageScoring>) -> Result<Scoring> {
         let packet_id = value.header.try_into()?;
-        Ok(Self { packet_id })
+        let scoring_info: ScoringInfo = (&value.scoring_info).into();
+        let vehicles = value
+            .vehicles
+            .iter()
+            .take(
+                scoring_info
+                    .num_vehicles
+                    .clamp(0, MAX_MAPPED_VEHICLES as i32) as usize,
+            )
+            .map(Into::into)
+            .collect();
+        Ok(Self {
+            packet_id,
+            scoring_info,
+            vehicles,
+        })
+    }
+}
+
+impl From<&PageScoringInfo> for ScoringInfo {
+    fn from(value: &PageScoringInfo) -> Self {
+        Self {
+            track_name: cp1252_to_string(&value.track_name).unwrap_or_default(),
+            session: value.session,
+            current_et: value.current_et,
+            end_et: value.end_et,
+            max_laps: value.max_laps,
+            lap_dist: value.lap_dist,
+            num_vehicles: value.num_vehicles,
+            game_phase: value.game_phase,
+            yellow_flag_state: value.yellow_flag_state,
+            sector_flag: value.sector_flag,
+            start_light: value.start_light,
+            num_red_lights: value.num_red_lights,
+            in_realtime: value.in_realtime,
+            player_name: cp1252_to_string(&value.player_name).unwrap_or_default(),
+            plr_file_name: cp1252_to_string(&value.plr_file_name).unwrap_or_default(),
+            dark_cloud: value.dark_cloud,
+            raining: value.raining,
+            ambient_temp: value.ambient_temp,
+            track_temp: value.track_temp,
+            wind: value.wind.into(),
+            min_path_wetness: value.min_path_wetness,
+            max_path_wetness: value.max_path_wetness,
+            game_mode: value.game_mode,
+            is_password_protected: value.is_password_protected,
+            server_port: value.server_port,
+            server_public_ip: value.server_public_ip,
+            max_players: value.max_players,
+            server_name: cp1252_to_string(&value.server_name).unwrap_or_default(),
+            start_et: value.start_et,
+            avg_path_wetness: value.avg_path_wetness,
+        }
+    }
+}
+
+impl From<&PageVehicleScoring> for VehicleScoring {
+    fn from(value: &PageVehicleScoring) -> Self {
+        Self {
+            id: value.id,
+            driver_name: cp1252_to_string(&value.driver_name).unwrap_or_default(),
+            vehicle_name: cp1252_to_string(&value.vehicle_name).unwrap_or_default(),
+            total_laps: value.total_laps,
+            sector: value.sector,
+            finish_status: value.finish_status,
+            lap_dist: value.lap_dist,
+            path_lateral: value.path_lateral,
+            track_edge: value.track_edge,
+            best_sector1: value.best_sector1,
+            best_sector2: value.best_sector2,
+            best_lap_time: value.best_lap_time,
+            last_sector1: value.last_sector1,
+            last_sector2: value.last_sector2,
+            last_lap_time: value.last_lap_time,
+            cur_sector1: value.cur_sector1,
+            cur_sector2: value.cur_sector2,
+            num_pitstops: value.num_pitstops,
+            num_penalties: value.num_penalties,
+            is_player: value.is_player,
+            control: value.control,
+            in_pits: value.in_pits,
+            place: value.place,
+            vehicle_class: cp1252_to_string(&value.vehicle_class).unwrap_or_default(),
+            time_behind_next: value.time_behind_next,
+            laps_behind_next: value.laps_behind_next,
+            time_behind_leader: value.time_behind_leader,
+            laps_behind_leader: value.laps_behind_leader,
+            lap_start_et: value.lap_start_et,
+            pos: Default::default(),
+            local_vel: Default::default(),
+            local_accel: Default::default(),
+            ori: value.ori.map(Into::into),
+            local_rot: Default::default(),
+            local_rot_accel: Default::default(),
+            headlights: value.headlights,
+            pit_state: value.pit_state,
+            server_scored: value.server_scored,
+            individual_phase: value.individual_phase,
+            qualification: value.qualification,
+            time_into_lap: value.time_into_lap,
+            estimated_lap_time: value.estimated_lap_time,
+            pit_group: cp1252_to_string(&value.pit_group).unwrap_or_default(),
+            flag: value.flag,
+            under_yellow: value.under_yellow,
+            count_lap_flag: value.count_lap_flag,
+            in_garage_stall: value.in_garage_stall,
+            upgrade_pack: cp1252_to_string(&value.upgrade_pack).unwrap_or_default(),
+            pit_lap_dist: value.pit_lap_dist,
+            best_lap_sector1: value.best_lap_sector1,
+            best_lap_sector2: value.best_lap_sector2,
+        }
     }
 }
 
