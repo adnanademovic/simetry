@@ -1,7 +1,8 @@
 use crate::rfactor_2::shared_memory_data::{
     PageExtended, PageForceFeedback, PageHeader, PageMultiRules, PagePitInfo, PageRules,
-    PageScoring, PageScoringInfo, PageTelemetry, PageVec3, PageVehicleScoring,
-    PageVehicleTelemetry, PageWeather, PageWheelTelemetry, MAX_MAPPED_VEHICLES,
+    PageScoring, PageScoringInfo, PageTelemetry, PageTrackRules, PageTrackRulesAction,
+    PageTrackRulesParticipant, PageVec3, PageVehicleScoring, PageVehicleTelemetry, PageWeather,
+    PageWheelTelemetry, MAX_MAPPED_VEHICLES,
 };
 use crate::windows_util::cp1252_to_string;
 use anyhow::{bail, Error, Result};
@@ -465,23 +466,141 @@ pub struct VehicleScoring {
 #[derive(Clone, Debug)]
 pub struct Rules {
     pub packet_id: PacketId,
+
+    pub track_rules: TrackRules,
+    pub actions: Vec<TrackRulesAction>,
+    pub participants: Vec<TrackRulesParticipant>,
 }
 
+#[derive(Clone, Debug)]
+pub struct TrackRulesAction {
+    // input only
+    /// recommended action
+    pub command: i32,
+    /// slot ID if applicable
+    pub id: i32,
+    /// elapsed time that event occurred, if applicable
+    pub elapsed_time: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct TrackRulesParticipant {
+    // input only
+    /// slot ID
+    pub id: i32,
+    /// 0-based place when caution came out (not valid for formation laps)
+    pub frozen_order: i16,
+    /// 1-based place (typically used for the initialization of the formation lap track order)
+    pub place: i16,
+    /// a rating of how much this vehicle is contributing to a yellow flag (the sum of all vehicles is compared to TrackRulesV01::mSafetyCarThreshold)
+    pub yellow_severity: f32,
+    /// equal to ( ( ScoringInfoV01::mLapDist * this->mRelativeLaps ) + VehicleScoringInfoV01::mLapDist )
+    pub current_relative_distance: f64,
+
+    // input/output
+    /// current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
+    pub relative_laps: i32,
+    /// which column (line/lane) that participant is supposed to be in
+    pub column_assignment: i32,
+    /// 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
+    pub position_assignment: i32,
+    /// whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1=true)
+    pub pits_open: u8,
+    /// while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
+    pub up_to_speed: u8,
+
+    /// calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
+    pub goal_relative_distance: f64,
+
+    /// a message for this participant to explain what is going on (untranslated; it will get run through translator on client machines)
+    pub message: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct TrackRules {
+    // input only
+    /// current time
+    pub current_et: f64,
+    /// current stage
+    pub stage: i32,
+    /// column assignment where pole position seems to be located
+    pub pole_column: i32,
+    /// number of recent actions
+    pub num_actions: i32,
+
+    /// number of participants (vehicles)
+    pub num_participants: i32,
+
+    /// whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
+    pub yellow_flag_detected: u8,
+    /// whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2=clear yellow)
+    pub yellow_flag_laps_was_overridden: u8,
+
+    /// whether safety car even exists
+    pub safety_car_exists: u8,
+    /// whether safety car is active
+    pub safety_car_active: u8,
+    /// number of laps
+    pub safety_car_laps: i32,
+    /// the threshold at which a safety car is called out (compared to the sum of TrackRulesParticipantV01::mYellowSeverity for each vehicle)
+    pub safety_car_threshold: f32,
+    /// safety car lap distance
+    pub safety_car_lap_dist: f64,
+    /// where the safety car starts from
+    pub safety_car_lap_dist_at_start: f32,
+
+    /// where the waypoint branch to the pits breaks off (this may not be perfectly accurate)
+    pub pit_lane_start_dist: f32,
+    /// the front of the teleport locations (a useful first guess as to where to throw the green flag)
+    pub teleport_lap_dist: f32,
+
+    // input/output
+    /// see ScoringInfoV01 for values
+    pub yellow_flag_state: i8,
+    /// suggested number of laps to run under yellow (may be passed in with admin command)
+    pub yellow_flag_laps: i16,
+
+    pub safety_car_instruction: i32,
+    /// maximum speed at which to drive
+    pub safety_car_speed: f32,
+    /// minimum spacing behind safety car (-1 to indicate no limit)
+    pub safety_car_minimum_spacing: f32,
+    /// maximum spacing behind safety car (-1 to indicate no limit)
+    pub safety_car_maximum_spacing: f32,
+
+    /// minimum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+    pub minimum_column_spacing: f32,
+    /// maximum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
+    pub maximum_column_spacing: f32,
+
+    /// minimum speed that anybody should be driving (-1 to indicate no limit)
+    pub minimum_speed: f32,
+    /// maximum speed that anybody should be driving (-1 to indicate no limit)
+    pub maximum_speed: f32,
+
+    /// a message for everybody to explain what is going on (which will get run through translator on client machines)
+    pub message: String,
+}
+
+/// Not supported yet.
 #[derive(Clone, Debug)]
 pub struct MultiRules {
     pub packet_id: PacketId,
 }
 
+/// Not supported yet.
 #[derive(Clone, Debug)]
 pub struct PitInfo {
     pub packet_id: PacketId,
 }
 
+/// Not supported yet.
 #[derive(Clone, Debug)]
 pub struct Weather {
     pub packet_id: PacketId,
 }
 
+/// Not supported yet.
 #[derive(Clone, Debug)]
 pub struct Extended {
     pub packet_id: PacketId,
@@ -761,7 +880,91 @@ impl TryFrom<Box<PageRules>> for Rules {
 
     fn try_from(value: Box<PageRules>) -> Result<Rules> {
         let packet_id = value.header.try_into()?;
-        Ok(Self { packet_id })
+        let track_rules: TrackRules = (&value.track_rules).into();
+        let actions = value
+            .actions
+            .iter()
+            .take(track_rules.num_actions.clamp(0, MAX_MAPPED_VEHICLES as i32) as usize)
+            .map(Into::into)
+            .collect();
+        let participants = value
+            .participants
+            .iter()
+            .take(
+                track_rules
+                    .num_participants
+                    .clamp(0, MAX_MAPPED_VEHICLES as i32) as usize,
+            )
+            .map(Into::into)
+            .collect();
+        Ok(Self {
+            packet_id,
+            track_rules,
+            actions,
+            participants,
+        })
+    }
+}
+
+impl From<&PageTrackRules> for TrackRules {
+    fn from(value: &PageTrackRules) -> Self {
+        Self {
+            current_et: value.current_et,
+            stage: value.stage,
+            pole_column: value.pole_column,
+            num_actions: value.num_actions,
+            num_participants: value.num_participants,
+            yellow_flag_detected: value.yellow_flag_detected,
+            yellow_flag_laps_was_overridden: value.yellow_flag_laps_was_overridden,
+            safety_car_exists: value.safety_car_exists,
+            safety_car_active: value.safety_car_active,
+            safety_car_laps: value.safety_car_laps,
+            safety_car_threshold: value.safety_car_threshold,
+            safety_car_lap_dist: value.safety_car_lap_dist,
+            safety_car_lap_dist_at_start: value.safety_car_lap_dist_at_start,
+            pit_lane_start_dist: value.pit_lane_start_dist,
+            teleport_lap_dist: value.teleport_lap_dist,
+            yellow_flag_state: value.yellow_flag_state,
+            yellow_flag_laps: value.yellow_flag_laps,
+            safety_car_instruction: value.safety_car_instruction,
+            safety_car_speed: value.safety_car_speed,
+            safety_car_minimum_spacing: value.safety_car_minimum_spacing,
+            safety_car_maximum_spacing: value.safety_car_maximum_spacing,
+            minimum_column_spacing: value.minimum_column_spacing,
+            maximum_column_spacing: value.maximum_column_spacing,
+            minimum_speed: value.minimum_speed,
+            maximum_speed: value.maximum_speed,
+            message: cp1252_to_string(&value.message).unwrap_or_default(),
+        }
+    }
+}
+
+impl From<&PageTrackRulesAction> for TrackRulesAction {
+    fn from(value: &PageTrackRulesAction) -> Self {
+        Self {
+            command: value.command,
+            id: value.id,
+            elapsed_time: value.elapsed_time,
+        }
+    }
+}
+
+impl From<&PageTrackRulesParticipant> for TrackRulesParticipant {
+    fn from(value: &PageTrackRulesParticipant) -> Self {
+        Self {
+            id: value.id,
+            frozen_order: value.frozen_order,
+            place: value.place,
+            yellow_severity: value.yellow_severity,
+            current_relative_distance: value.current_relative_distance,
+            relative_laps: value.relative_laps,
+            column_assignment: value.column_assignment,
+            position_assignment: value.position_assignment,
+            pits_open: value.pits_open,
+            up_to_speed: value.up_to_speed,
+            goal_relative_distance: value.goal_relative_distance,
+            message: cp1252_to_string(&value.message).unwrap_or_default(),
+        }
     }
 }
 
