@@ -284,9 +284,6 @@ pub struct ScoringInfo {
     /// distance around track
     pub lap_dist: f64,
 
-    /// current number of vehicles
-    pub num_vehicles: i32,
-
     /// Game phases
     pub game_phase: u8,
 
@@ -526,11 +523,6 @@ pub struct TrackRules {
     pub stage: i32,
     /// column assignment where pole position seems to be located
     pub pole_column: i32,
-    /// number of recent actions
-    pub num_actions: i32,
-
-    /// number of participants (vehicles)
-    pub num_participants: i32,
 
     /// whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
     pub yellow_flag_detected: u8,
@@ -922,7 +914,8 @@ impl TryFrom<Box<PageScoring>> for Scoring {
             .vehicles
             .iter()
             .take(
-                scoring_info
+                value
+                    .scoring_info
                     .num_vehicles
                     .clamp(0, MAX_MAPPED_VEHICLES as i32) as usize,
             )
@@ -945,7 +938,6 @@ impl From<&PageScoringInfo> for ScoringInfo {
             end_et: value.end_et,
             max_laps: value.max_laps,
             lap_dist: value.lap_dist,
-            num_vehicles: value.num_vehicles,
             game_phase: value.game_phase,
             yellow_flag_state: value.yellow_flag_state,
             sector_flag: value.sector_flag,
@@ -1040,14 +1032,20 @@ impl TryFrom<Box<PageRules>> for Rules {
         let actions = value
             .actions
             .iter()
-            .take(track_rules.num_actions.clamp(0, MAX_MAPPED_VEHICLES as i32) as usize)
+            .take(
+                value
+                    .track_rules
+                    .num_actions
+                    .clamp(0, MAX_MAPPED_VEHICLES as i32) as usize,
+            )
             .map(Into::into)
             .collect();
         let participants = value
             .participants
             .iter()
             .take(
-                track_rules
+                value
+                    .track_rules
                     .num_participants
                     .clamp(0, MAX_MAPPED_VEHICLES as i32) as usize,
             )
@@ -1068,8 +1066,6 @@ impl From<&PageTrackRules> for TrackRules {
             current_et: value.current_et,
             stage: value.stage,
             pole_column: value.pole_column,
-            num_actions: value.num_actions,
-            num_participants: value.num_participants,
             yellow_flag_detected: value.yellow_flag_detected,
             yellow_flag_laps_was_overridden: value.yellow_flag_laps_was_overridden,
             safety_car_exists: value.safety_car_exists,
