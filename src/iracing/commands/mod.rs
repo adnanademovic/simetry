@@ -4,7 +4,7 @@ use windows::core::PCSTR;
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{RegisterWindowMessageA, SendNotifyMessageA};
 
-static BROADCASTMSGNAME: &[u8] = b"IRSDK_BROADCASTMSG";
+static BROADCASTMSGNAME: &[u8] = b"IRSDK_BROADCASTMSG\0";
 
 static IRACING_BROADCAST_MSG_ID: Lazy<u32> =
     Lazy::new(|| unsafe { RegisterWindowMessageA(PCSTR::from_raw(BROADCASTMSGNAME.as_ptr())) });

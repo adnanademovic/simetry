@@ -16,8 +16,8 @@ use windows::Win32::System::Threading::{
 use windows::Win32::System::WindowsProgramming::INFINITE;
 use yaml_rust::Yaml;
 
-static DATAVALIDEVENTNAME: &[u8] = b"Local\\IRSDKDataValidEvent";
-static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName";
+static DATAVALIDEVENTNAME: &[u8] = b"Local\\IRSDKDataValidEvent\0";
+static MEMMAPFILENAME: &[u8] = b"Local\\IRSDKMemMapFileName\0";
 
 const STATUS_CONNECTED_FLAG: i32 = 1;
 
