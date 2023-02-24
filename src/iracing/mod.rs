@@ -2,6 +2,8 @@
 //!
 //! Use [`commands`] to send messages to iRacing.
 
+mod bit_field;
+mod car_positions;
 mod client;
 pub mod commands;
 mod constants;
@@ -12,6 +14,8 @@ mod session_info;
 mod sim_state;
 mod var_data;
 
+pub use bit_field::BitField;
+pub use car_positions::CarPositions;
 pub use client::Client;
 pub use constants::{UNLIMITED_LAPS, UNLIMITED_TIME};
 pub use disk_client::DiskClient;
