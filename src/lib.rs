@@ -1,14 +1,13 @@
-use crate::iracing::CarPositions;
+pub use racing_flags::RacingFlags;
 use std::future::Future;
 use std::time::Duration;
 use tokio::select;
-use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
-use uom::si::velocity::{kilometer_per_hour, meter_per_second};
 
 pub mod assetto_corsa;
 pub mod assetto_corsa_competizione;
 pub mod iracing;
+mod racing_flags;
 pub mod rfactor_2;
 mod windows_util;
 
@@ -63,19 +62,7 @@ impl Simetry {
                 SimetrySource::AssettoCorsaCompetizione(v) => {
                     MomentSource::AssettoCorsaCompetizione(v.next_sim_state().await?)
                 }
-                SimetrySource::RFactor2(v) => {
-                    let sim_state = v.next_sim_state().await?;
-                    let player_id = sim_state
-                        .scoring
-                        .vehicles
-                        .iter()
-                        .find(|v| v.is_player != 0)
-                        .map(|v| v.id);
-                    MomentSource::RFactor2 {
-                        sim_state,
-                        player_id,
-                    }
-                }
+                SimetrySource::RFactor2(v) => MomentSource::RFactor2(v.next_sim_state().await?),
             },
         })
     }
@@ -89,14 +76,30 @@ enum MomentSource {
     IRacing(iracing::SimState),
     AssettoCorsa(assetto_corsa::SimState),
     AssettoCorsaCompetizione(assetto_corsa_competizione::SimState),
-    RFactor2 {
-        sim_state: rfactor_2::SimState,
-        player_id: Option<i32>,
-    },
+    RFactor2(rfactor_2::SimState),
+}
+
+pub trait MomentImpl {
+    fn car_left(&self) -> bool;
+    fn car_right(&self) -> bool;
+    fn basic_telemetry(&self) -> Option<BasicTelemetry>;
+    fn shift_point(&self) -> Option<AngularVelocity>;
+    fn flags(&self) -> RacingFlags;
 }
 
 pub struct Moment {
     inner: MomentSource,
+}
+
+impl Moment {
+    fn source(&self) -> &dyn MomentImpl {
+        match &self.inner {
+            MomentSource::IRacing(v) => v,
+            MomentSource::AssettoCorsa(v) => v,
+            MomentSource::AssettoCorsaCompetizione(v) => v,
+            MomentSource::RFactor2(v) => v,
+        }
+    }
 }
 
 pub struct BasicTelemetry {
@@ -108,119 +111,24 @@ pub struct BasicTelemetry {
     pub in_pit_lane: bool,
 }
 
-impl Moment {
-    pub fn car_left(&self) -> bool {
-        match &self.inner {
-            MomentSource::IRacing(v) => v
-                .read_name("CarLeftRight")
-                .unwrap_or(CarPositions::Off)
-                .car_left(),
-            MomentSource::AssettoCorsa(_)
-            | MomentSource::AssettoCorsaCompetizione(_)
-            | MomentSource::RFactor2 { .. } => false,
-        }
+impl MomentImpl for Moment {
+    fn car_left(&self) -> bool {
+        self.source().car_left()
     }
 
-    pub fn car_right(&self) -> bool {
-        match &self.inner {
-            MomentSource::IRacing(v) => v
-                .read_name("CarLeftRight")
-                .unwrap_or(CarPositions::Off)
-                .car_right(),
-            MomentSource::AssettoCorsa(_)
-            | MomentSource::AssettoCorsaCompetizione(_)
-            | MomentSource::RFactor2 { .. } => false,
-        }
+    fn car_right(&self) -> bool {
+        self.source().car_right()
     }
 
-    pub fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        Some(match &self.inner {
-            MomentSource::IRacing(v) => BasicTelemetry {
-                gear: v.read_name("Gear").unwrap_or(0i32) as i8,
-                speed: Velocity::new::<meter_per_second>(v.read_name("Speed").unwrap_or(0.0)),
-                engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                    v.read_name("RPM").unwrap_or(0.0),
-                ),
-                max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                    v.session_info()["DriverInfo"]["DriverCarRedLine"]
-                        .as_f64()
-                        .unwrap_or(f64::INFINITY),
-                ),
-                pit_limiter_engaged: v.read_name("dcPitSpeedLimiterToggle").unwrap_or(false),
-                in_pit_lane: v.read_name("OnPitRoad").unwrap_or(false),
-            },
-            MomentSource::AssettoCorsa(v) => BasicTelemetry {
-                gear: (v.physics.gear - 1) as i8,
-                speed: Velocity::new::<kilometer_per_hour>(v.physics.speed_kmh as f64),
-                engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                    v.physics.rpm as f64,
-                ),
-                max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                    v.static_data.max_rpm as f64,
-                ),
-                pit_limiter_engaged: v.physics.pit_limiter_on != 0,
-                in_pit_lane: v.graphics.is_in_pit_lane != 0,
-            },
-            MomentSource::AssettoCorsaCompetizione(v) => BasicTelemetry {
-                gear: (v.physics.gear - 1) as i8,
-                speed: Velocity::new::<kilometer_per_hour>(v.physics.speed_kmh as f64),
-                engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                    v.physics.rpm as f64,
-                ),
-                max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                    v.static_data.max_rpm as f64,
-                ),
-                pit_limiter_engaged: v.physics.pit_limiter_on,
-                in_pit_lane: v.graphics.is_in_pit_lane,
-            },
-            MomentSource::RFactor2 {
-                sim_state,
-                player_id,
-            } => {
-                let player_id = player_id.as_ref()?;
-                let player_telemetry = sim_state
-                    .telemetry
-                    .vehicles
-                    .iter()
-                    .find(|v| v.id == *player_id)?;
-                let player_scoring = sim_state
-                    .scoring
-                    .vehicles
-                    .iter()
-                    .find(|v| v.id == *player_id)?;
-                let speed_vec_ms = &player_telemetry.local_vel;
-                let speed_ms = (speed_vec_ms.x * speed_vec_ms.x
-                    + speed_vec_ms.y * speed_vec_ms.y
-                    + speed_vec_ms.z * speed_vec_ms.z)
-                    .sqrt();
-                BasicTelemetry {
-                    gear: player_telemetry.gear as i8,
-                    speed: Velocity::new::<meter_per_second>(speed_ms),
-                    engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                        player_telemetry.engine_rpm,
-                    ),
-                    max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                        player_telemetry.engine_max_rpm,
-                    ),
-                    pit_limiter_engaged: player_telemetry.speed_limiter != 0,
-                    in_pit_lane: player_scoring.in_pits != 0,
-                }
-            }
-        })
+    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+        self.source().basic_telemetry()
     }
 
-    pub fn shift_point(&self) -> Option<AngularVelocity> {
-        match &self.inner {
-            MomentSource::IRacing(v) => Some(AngularVelocity::new::<revolution_per_minute>(
-                v.session_info()["DriverInfo"]["DriverCarSLShiftRPM"].as_f64()?,
-            )),
-            MomentSource::AssettoCorsa(_)
-            | MomentSource::AssettoCorsaCompetizione(_)
-            | MomentSource::RFactor2 { .. } => None,
-        }
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        self.source().shift_point()
     }
 
-    pub fn flags(&self) {
-        todo!();
+    fn flags(&self) -> RacingFlags {
+        self.source().flags()
     }
 }

@@ -1,6 +1,13 @@
-use crate::iracing::{Header, Value, VarData, VarHeader, VarHeaders, VarType};
+use crate::iracing::flags::{driver_black_flags, global_flags, start_flags};
+use crate::iracing::{
+    BitField, CarPositions, Header, Value, VarData, VarHeader, VarHeaders, VarType,
+};
+use crate::{BasicTelemetry, MomentImpl, RacingFlags};
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
+use uom::si::angular_velocity::revolution_per_minute;
+use uom::si::f64::{AngularVelocity, Velocity};
+use uom::si::velocity::meter_per_second;
 use yaml_rust::Yaml;
 
 #[derive(Clone)]
@@ -9,6 +16,66 @@ pub struct SimState {
     variables: Arc<VarHeaders>,
     raw_data: Vec<u8>,
     session_info: Arc<Yaml>,
+}
+
+impl MomentImpl for SimState {
+    fn car_left(&self) -> bool {
+        self.read_name("CarLeftRight")
+            .unwrap_or(CarPositions::Off)
+            .car_left()
+    }
+
+    fn car_right(&self) -> bool {
+        self.read_name("CarLeftRight")
+            .unwrap_or(CarPositions::Off)
+            .car_right()
+    }
+
+    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+        Some(BasicTelemetry {
+            gear: self.read_name("Gear").unwrap_or(0i32) as i8,
+            speed: Velocity::new::<meter_per_second>(self.read_name("Speed").unwrap_or(0.0)),
+            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                self.read_name("RPM").unwrap_or(0.0),
+            ),
+            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                self.session_info()["DriverInfo"]["DriverCarRedLine"]
+                    .as_f64()
+                    .unwrap_or(f64::INFINITY),
+            ),
+            pit_limiter_engaged: self.read_name("dcPitSpeedLimiterToggle").unwrap_or(false),
+            in_pit_lane: self.read_name("OnPitRoad").unwrap_or(false),
+        })
+    }
+
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.session_info()["DriverInfo"]["DriverCarSLShiftRPM"].as_f64()?,
+        ))
+    }
+
+    fn flags(&self) -> RacingFlags {
+        let flags: BitField = self.read_name("SessionFlags").unwrap_or(BitField(0));
+
+        RacingFlags {
+            green: flags.0 & global_flags::GREEN != 0,
+            yellow: flags.0 & global_flags::YELLOW != 0,
+            blue: flags.0 & global_flags::BLUE != 0,
+            white: flags.0 & global_flags::WHITE != 0,
+            red: flags.0 & global_flags::RED != 0,
+            black: flags.0
+                & (driver_black_flags::BLACK
+                    | driver_black_flags::DISQUALIFY
+                    | driver_black_flags::FURLED)
+                != 0,
+            checkered: flags.0 & global_flags::CHECKERED != 0,
+            meatball: flags.0 & (driver_black_flags::REPAIR | driver_black_flags::SERVICEABLE) != 0,
+            black_and_white: false,
+            start_ready: flags.0 & start_flags::READY != 0,
+            start_set: flags.0 & start_flags::SET != 0,
+            start_go: flags.0 & start_flags::GO != 0,
+        }
+    }
 }
 
 impl Debug for SimState {

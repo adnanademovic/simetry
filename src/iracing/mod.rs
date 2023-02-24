@@ -8,7 +8,7 @@ mod client;
 pub mod commands;
 mod constants;
 mod disk_client;
-mod flags;
+pub mod flags;
 mod header;
 mod session_info;
 mod sim_state;

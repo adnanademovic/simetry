@@ -85,6 +85,7 @@ impl From<FlagTypeRaw> for FlagType {
             5 => FlagType::Checkered,
             6 => FlagType::Penalty,
             7 => FlagType::Green,
+            8 => FlagType::Orange,
             _ => FlagType::None,
         }
     }

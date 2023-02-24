@@ -6,9 +6,13 @@ mod client;
 mod data;
 mod shared_memory_data;
 
+use crate::{BasicTelemetry, MomentImpl, RacingFlags};
 pub use client::{Client, Config};
 pub use data::{Extended, ForceFeedback, MultiRules, PitInfo, Rules, Scoring, Telemetry, Weather};
 use std::sync::Arc;
+use uom::si::angular_velocity::revolution_per_minute;
+use uom::si::f64::{AngularVelocity, Velocity};
+use uom::si::velocity::meter_per_second;
 
 #[derive(Clone, Debug)]
 pub struct SimState {
@@ -20,4 +24,46 @@ pub struct SimState {
     pub pit_info: Arc<PitInfo>,
     pub weather: Arc<Weather>,
     pub extended: Arc<Extended>,
+}
+
+impl MomentImpl for SimState {
+    fn car_left(&self) -> bool {
+        false
+    }
+
+    fn car_right(&self) -> bool {
+        false
+    }
+
+    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        let player_id = player_scoring.id;
+        let player_telemetry = self.telemetry.vehicles.iter().find(|v| v.id == player_id)?;
+        let speed_vec_ms = &player_telemetry.local_vel;
+        let speed_ms = (speed_vec_ms.x * speed_vec_ms.x
+            + speed_vec_ms.y * speed_vec_ms.y
+            + speed_vec_ms.z * speed_vec_ms.z)
+            .sqrt();
+        Some(BasicTelemetry {
+            gear: player_telemetry.gear as i8,
+            speed: Velocity::new::<meter_per_second>(speed_ms),
+            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                player_telemetry.engine_rpm,
+            ),
+            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                player_telemetry.engine_max_rpm,
+            ),
+            pit_limiter_engaged: player_telemetry.speed_limiter != 0,
+            in_pit_lane: player_scoring.in_pits != 0,
+        })
+    }
+
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        None
+    }
+
+    fn flags(&self) -> RacingFlags {
+        // TODO: Implement rFactor 2 flags
+        RacingFlags::default()
+    }
 }

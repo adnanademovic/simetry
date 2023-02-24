@@ -56,6 +56,7 @@ pub enum FlagType {
     Checkered,
     Penalty,
     Green,
+    Orange,
 }
 
 #[derive(Clone, Debug, PartialEq)]
