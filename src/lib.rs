@@ -105,6 +105,7 @@ pub struct BasicTelemetry {
     pub engine_rotation_speed: AngularVelocity,
     pub max_engine_rotation_speed: AngularVelocity,
     pub pit_limiter_engaged: bool,
+    pub in_pit_lane: bool,
 }
 
 impl Moment {
@@ -146,6 +147,7 @@ impl Moment {
                         .unwrap_or(f64::INFINITY),
                 ),
                 pit_limiter_engaged: v.read_name("dcPitSpeedLimiterToggle").unwrap_or(false),
+                in_pit_lane: v.read_name("OnPitRoad").unwrap_or(false),
             },
             MomentSource::AssettoCorsa(v) => BasicTelemetry {
                 gear: (v.physics.gear - 1) as i8,
@@ -157,6 +159,7 @@ impl Moment {
                     v.static_data.max_rpm as f64,
                 ),
                 pit_limiter_engaged: v.physics.pit_limiter_on != 0,
+                in_pit_lane: v.graphics.is_in_pit_lane != 0,
             },
             MomentSource::AssettoCorsaCompetizione(v) => BasicTelemetry {
                 gear: (v.physics.gear - 1) as i8,
@@ -168,6 +171,7 @@ impl Moment {
                     v.static_data.max_rpm as f64,
                 ),
                 pit_limiter_engaged: v.physics.pit_limiter_on,
+                in_pit_lane: v.graphics.is_in_pit_lane,
             },
             MomentSource::RFactor2 {
                 sim_state,
@@ -176,6 +180,11 @@ impl Moment {
                 let player_id = player_id.as_ref()?;
                 let player_telemetry = sim_state
                     .telemetry
+                    .vehicles
+                    .iter()
+                    .find(|v| v.id == *player_id)?;
+                let player_scoring = sim_state
+                    .scoring
                     .vehicles
                     .iter()
                     .find(|v| v.id == *player_id)?;
@@ -194,6 +203,7 @@ impl Moment {
                         player_telemetry.engine_max_rpm,
                     ),
                     pit_limiter_engaged: player_telemetry.speed_limiter != 0,
+                    in_pit_lane: player_scoring.in_pits != 0,
                 }
             }
         })
