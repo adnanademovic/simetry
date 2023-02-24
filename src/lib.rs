@@ -199,6 +199,17 @@ impl Moment {
         })
     }
 
+    pub fn shift_point(&self) -> Option<AngularVelocity> {
+        match &self.inner {
+            MomentSource::IRacing(v) => Some(AngularVelocity::new::<revolution_per_minute>(
+                v.session_info()["DriverInfo"]["DriverCarSLShiftRPM"].as_f64()?,
+            )),
+            MomentSource::AssettoCorsa(_)
+            | MomentSource::AssettoCorsaCompetizione(_)
+            | MomentSource::RFactor2 { .. } => None,
+        }
+    }
+
     pub fn flags(&self) {
         todo!();
     }
