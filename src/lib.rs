@@ -52,6 +52,15 @@ impl Simetry {
         Self { inner }
     }
 
+    pub fn sim_name(&self) -> &str {
+        match self.inner {
+            SimetrySource::IRacing(_) => "iRacing",
+            SimetrySource::AssettoCorsa(_) => "Assetto Corsa",
+            SimetrySource::AssettoCorsaCompetizione(_) => "Assetto Corsa Competizione",
+            SimetrySource::RFactor2(_) => "rFactor 2",
+        }
+    }
+
     pub async fn next_moment(&mut self) -> Option<Moment> {
         Some(Moment {
             inner: match &mut self.inner {
