@@ -55,9 +55,9 @@ impl Simetry {
     pub fn sim_name(&self) -> &str {
         match self.inner {
             SimetrySource::IRacing(_) => "iRacing",
-            SimetrySource::AssettoCorsa(_) => "Assetto Corsa",
-            SimetrySource::AssettoCorsaCompetizione(_) => "Assetto Corsa Competizione",
-            SimetrySource::RFactor2(_) => "rFactor 2",
+            SimetrySource::AssettoCorsa(_) => "AssettoCorsa",
+            SimetrySource::AssettoCorsaCompetizione(_) => "AssettoCorsaCompetizione",
+            SimetrySource::RFactor2(_) => "rFactor2",
         }
     }
 
