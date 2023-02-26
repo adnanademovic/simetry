@@ -69,6 +69,14 @@ impl MomentImpl for SimState {
 
     fn car_model_id(&self) -> Option<String> {
         let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
-        Some(player_scoring.vehicle_name.clone())
+        Some(
+            player_scoring
+                .vehicle_name
+                .split_once('#')
+                .unwrap_or(("?", ""))
+                .0
+                .trim()
+                .into(),
+        )
     }
 }
