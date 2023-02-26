@@ -76,6 +76,17 @@ impl MomentImpl for SimState {
             start_go: flags.0 & start_flags::GO != 0,
         }
     }
+
+    fn car_model_id(&self) -> Option<String> {
+        let driver_info = &self.session_info["DriverInfo"];
+        let player_car_idx = driver_info["DriverCarIdx"].as_i64()?;
+        let player_driver = driver_info["Drivers"]
+            .as_vec()?
+            .iter()
+            .find(|driver| driver["CarIdx"].as_i64() == Some(player_car_idx))?;
+        let car_model_id = player_driver["CarID"].as_i64()?;
+        Some(format!("{car_model_id}"))
+    }
 }
 
 impl Debug for SimState {

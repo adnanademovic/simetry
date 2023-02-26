@@ -66,4 +66,9 @@ impl MomentImpl for SimState {
         // TODO: Implement rFactor 2 flags
         RacingFlags::default()
     }
+
+    fn car_model_id(&self) -> Option<String> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        Some(player_scoring.vehicle_name.clone())
+    }
 }

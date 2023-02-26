@@ -94,6 +94,7 @@ pub trait MomentImpl {
     fn basic_telemetry(&self) -> Option<BasicTelemetry>;
     fn shift_point(&self) -> Option<AngularVelocity>;
     fn flags(&self) -> RacingFlags;
+    fn car_model_id(&self) -> Option<String>;
 }
 
 pub struct Moment {
@@ -139,5 +140,9 @@ impl MomentImpl for Moment {
 
     fn flags(&self) -> RacingFlags {
         self.source().flags()
+    }
+
+    fn car_model_id(&self) -> Option<String> {
+        self.source().car_model_id()
     }
 }
