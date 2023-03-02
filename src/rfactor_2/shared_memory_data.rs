@@ -486,7 +486,7 @@ pub struct PageVehicleScoring {
 
     /// pit group (same as team name unless pit is shared)    
     pub pit_group: String24,
-    /// primary flag being shown to vehicle    
+    /// primary flag being shown to vehicle (currently only 0 = green or 6 = blue)
     pub flag: u8,
     /// whether this car has taken a full-course caution flag at the start/finish line    
     pub under_yellow: u8,

@@ -63,8 +63,24 @@ impl MomentImpl for SimState {
     }
 
     fn flags(&self) -> RacingFlags {
-        // TODO: Implement rFactor 2 flags
-        RacingFlags::default()
+        let player_scoring = match self.scoring.vehicles.iter().find(|v| v.is_player != 0) {
+            Some(v) => v,
+            None => return RacingFlags::default(),
+        };
+        RacingFlags {
+            green: player_scoring.flag == 0,
+            yellow: player_scoring.individual_phase == 10,
+            blue: player_scoring.flag == 6,
+            white: false,
+            red: false,
+            black: player_scoring.num_penalties > 0,
+            checkered: player_scoring.finish_status == 1,
+            meatball: false,
+            black_and_white: false,
+            start_ready: false,
+            start_set: false,
+            start_go: false,
+        }
     }
 
     fn car_model_id(&self) -> Option<String> {
