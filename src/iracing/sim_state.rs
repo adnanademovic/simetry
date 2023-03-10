@@ -87,6 +87,14 @@ impl MomentImpl for SimState {
         let car_model_id = player_driver["CarID"].as_i64()?;
         Some(format!("{car_model_id}"))
     }
+
+    fn ignition_on(&self) -> bool {
+        self.read_name("Voltage").unwrap_or(0.0) > 1.0
+    }
+
+    fn starter_on(&self) -> bool {
+        false
+    }
 }
 
 impl Debug for SimState {

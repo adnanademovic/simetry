@@ -95,4 +95,12 @@ impl MomentImpl for SimState {
                 .into(),
         )
     }
+
+    fn ignition_on(&self) -> bool {
+        true
+    }
+
+    fn starter_on(&self) -> bool {
+        false
+    }
 }

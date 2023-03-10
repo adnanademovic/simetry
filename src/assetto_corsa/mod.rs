@@ -102,4 +102,12 @@ impl MomentImpl for SimState {
     fn car_model_id(&self) -> Option<String> {
         Some(self.static_data.car_model.clone())
     }
+
+    fn ignition_on(&self) -> bool {
+        self.physics.ignition_on != 0
+    }
+
+    fn starter_on(&self) -> bool {
+        self.physics.starter_engine_on != 0
+    }
 }

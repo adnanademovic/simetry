@@ -95,6 +95,8 @@ pub trait MomentImpl {
     fn shift_point(&self) -> Option<AngularVelocity>;
     fn flags(&self) -> RacingFlags;
     fn car_model_id(&self) -> Option<String>;
+    fn ignition_on(&self) -> bool;
+    fn starter_on(&self) -> bool;
 }
 
 pub struct Moment {
@@ -144,5 +146,13 @@ impl MomentImpl for Moment {
 
     fn car_model_id(&self) -> Option<String> {
         self.source().car_model_id()
+    }
+
+    fn ignition_on(&self) -> bool {
+        self.source().ignition_on()
+    }
+
+    fn starter_on(&self) -> bool {
+        self.source().starter_on()
     }
 }
