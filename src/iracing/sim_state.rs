@@ -89,11 +89,11 @@ impl MomentImpl for SimState {
     }
 
     fn ignition_on(&self) -> bool {
-        self.read_name("Voltage").unwrap_or(0.0) > 1.0
+        self.read_name("Voltage").unwrap_or(0.0f32) > 1.0
     }
 
     fn starter_on(&self) -> bool {
-        false
+        self.read_name("dcStarter").unwrap_or(false)
     }
 }
 
