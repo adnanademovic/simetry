@@ -114,6 +114,7 @@ impl Moment {
     }
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct BasicTelemetry {
     pub gear: i8,
     pub speed: Velocity,
