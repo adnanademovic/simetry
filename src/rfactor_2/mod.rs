@@ -6,7 +6,7 @@ mod client;
 mod data;
 mod shared_memory_data;
 
-use crate::{BasicTelemetry, MomentImpl, RacingFlags};
+use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
 pub use client::{Client, Config};
 pub use data::{Extended, ForceFeedback, MultiRules, PitInfo, Rules, Scoring, Telemetry, Weather};
 use std::sync::Arc;
@@ -26,7 +26,18 @@ pub struct SimState {
     pub extended: Arc<Extended>,
 }
 
-impl MomentImpl for SimState {
+#[async_trait::async_trait]
+impl Simetry for Client {
+    fn name(&self) -> &str {
+        "rFactor2"
+    }
+
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+        Some(Box::new(self.next_sim_state().await?))
+    }
+}
+
+impl Moment for SimState {
     fn car_left(&self) -> bool {
         false
     }

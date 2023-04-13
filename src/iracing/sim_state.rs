@@ -2,7 +2,7 @@ use crate::iracing::flags::{driver_black_flags, global_flags, start_flags};
 use crate::iracing::{
     BitField, CarPositions, Header, Value, VarData, VarHeader, VarHeaders, VarType,
 };
-use crate::{BasicTelemetry, MomentImpl, RacingFlags};
+use crate::{BasicTelemetry, Moment, RacingFlags};
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use uom::si::angular_velocity::revolution_per_minute;
@@ -18,7 +18,7 @@ pub struct SimState {
     session_info: Arc<Yaml>,
 }
 
-impl MomentImpl for SimState {
+impl Moment for SimState {
     fn car_left(&self) -> bool {
         self.read_name("CarLeftRight")
             .unwrap_or(CarPositions::Off)

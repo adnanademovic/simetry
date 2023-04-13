@@ -1,4 +1,3 @@
-use simetry::MomentImpl;
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::velocity::kilometer_per_hour;
 

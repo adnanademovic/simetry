@@ -7,7 +7,7 @@ pub use crate::assetto_corsa_competizione::data::{
 use crate::assetto_corsa_competizione::shared_memory_data::{
     PageFileGraphics, PageFilePhysics, PageFileStatic,
 };
-use crate::{BasicTelemetry, MomentImpl, RacingFlags};
+use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
 use uom::si::velocity::kilometer_per_hour;
@@ -59,7 +59,18 @@ impl util::WithPacketId for Graphics {
 pub type Client = util::SharedMemoryClient<AssettoCorsaCompetizioneApiVersion>;
 pub type SimState = util::SimState<AssettoCorsaCompetizioneApiVersion>;
 
-impl MomentImpl for SimState {
+#[async_trait::async_trait]
+impl Simetry for Client {
+    fn name(&self) -> &str {
+        "AssettoCorsaCompetizione"
+    }
+
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+        Some(Box::new(self.next_sim_state().await?))
+    }
+}
+
+impl Moment for SimState {
     fn car_left(&self) -> bool {
         false
     }

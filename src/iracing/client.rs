@@ -2,7 +2,7 @@ use crate::iracing::constants::IRSDK_VER;
 use crate::iracing::header::{VarBuf, VarHeaderRaw};
 use crate::iracing::session_info::parse_session_info;
 use crate::iracing::{Header, SimState, VarHeader, VarHeaders};
-use crate::windows_util;
+use crate::{windows_util, Moment, Simetry};
 use anyhow::{bail, Result};
 use std::collections::HashMap;
 use std::slice::from_raw_parts;
@@ -145,6 +145,17 @@ impl Client {
             Err(_) => return false,
         };
         elapsed < CLIENT_TIMEOUT
+    }
+}
+
+#[async_trait::async_trait]
+impl Simetry for Client {
+    fn name(&self) -> &str {
+        "iRacing"
+    }
+
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+        Some(Box::new(self.next_sim_state().await?))
     }
 }
 
