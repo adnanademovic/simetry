@@ -12,6 +12,16 @@ mod racing_flags;
 pub mod rfactor_2;
 mod windows_util;
 
+#[inline]
+fn unhandled_default<T: Default>() -> T {
+    unhandled(T::default())
+}
+
+#[inline]
+fn unhandled<T>(value: T) -> T {
+    value
+}
+
 #[async_trait::async_trait]
 pub trait Simetry {
     fn name(&self) -> &str;
@@ -37,11 +47,13 @@ pub async fn connect() -> Box<dyn Simetry> {
     let assetto_corsa_competizione_future =
         loop_until_success(assetto_corsa_competizione::Client::connect, retry_delay);
     let rfactor_2_future = rfactor_2::Client::connect();
+    let dirt_rally_2_future = loop_until_success(dirt_rally_2::Client::connect_default, retry_delay);
     select! {
         x = iracing_future => Box::new(x),
         x = assetto_corsa_future => Box::new(x),
         x = assetto_corsa_competizione_future => Box::new(x),
         x = rfactor_2_future => Box::new(x),
+        x = dirt_rally_2_future => Box::new(x),
     }
 }
 

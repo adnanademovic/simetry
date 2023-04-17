@@ -1,6 +1,10 @@
+use crate::{unhandled, unhandled_default, BasicTelemetry, Moment, RacingFlags, Simetry};
 use anyhow::Result;
 use std::mem::transmute;
 use tokio::net::UdpSocket;
+use uom::si::angular_velocity::revolution_per_minute;
+use uom::si::f64::{AngularVelocity, Velocity};
+use uom::si::velocity::meter_per_second;
 
 #[derive(Debug)]
 pub struct Client {
@@ -9,6 +13,11 @@ pub struct Client {
 
 impl Client {
     pub const DEFAULT_PORT: &'static str = "127.0.0.1:20777";
+
+    #[inline]
+    pub async fn connect_default() -> Result<Self> {
+        Self::connect(Self::DEFAULT_PORT).await
+    }
 
     pub async fn connect(port: &str) -> Result<Self> {
         let slf = Self {
@@ -79,4 +88,64 @@ pub struct SimState {
     unused3: [f32; 1],
     pub maximum_rpm_div_10: f32,
     unused4: [u8; 8],
+}
+
+#[async_trait::async_trait]
+impl Simetry for Client {
+    fn name(&self) -> &str {
+        "DirtRally2"
+    }
+
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+        Some(Box::new(self.next_sim_state().await.ok()?))
+    }
+}
+
+impl Moment for SimState {
+    fn car_left(&self) -> bool {
+        unhandled(false)
+    }
+
+    fn car_right(&self) -> bool {
+        unhandled(false)
+    }
+
+    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+        let mut gear = self.gear as i8;
+        if gear == 10 {
+            gear = -1;
+        }
+        Some(BasicTelemetry {
+            gear,
+            speed: Velocity::new::<meter_per_second>(self.velocity_ms as f64),
+            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                self.speed_of_engine_rpm_div_10 as f64 * 10.0,
+            ),
+            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                self.maximum_rpm_div_10 as f64 * 10.0,
+            ),
+            pit_limiter_engaged: unhandled(false),
+            in_pit_lane: unhandled(false),
+        })
+    }
+
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        unhandled(None)
+    }
+
+    fn flags(&self) -> RacingFlags {
+        unhandled_default()
+    }
+
+    fn car_model_id(&self) -> Option<String> {
+        unhandled(None)
+    }
+
+    fn ignition_on(&self) -> bool {
+        unhandled(true)
+    }
+
+    fn starter_on(&self) -> bool {
+        unhandled(false)
+    }
 }
