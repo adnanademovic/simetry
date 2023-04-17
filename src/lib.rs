@@ -6,6 +6,7 @@ use uom::si::f64::{AngularVelocity, Velocity};
 
 pub mod assetto_corsa;
 pub mod assetto_corsa_competizione;
+pub mod dirt_rally_2;
 pub mod iracing;
 mod racing_flags;
 pub mod rfactor_2;

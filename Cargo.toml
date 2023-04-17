@@ -25,6 +25,7 @@ serde = { version = "1.0.157", features = ["derive"] }
 version = "1.24.1"
 features = [
     "macros",
+    "net",
     "rt",
     "rt-multi-thread",
     "time",
