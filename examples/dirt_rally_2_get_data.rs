@@ -3,7 +3,7 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
-    let client = dirt_rally_2::Client::connect(dirt_rally_2::Client::DEFAULT_PORT)
+    let client = dirt_rally_2::Client::connect(dirt_rally_2::Client::DEFAULT_URI)
         .await
         .unwrap();
 

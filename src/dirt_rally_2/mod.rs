@@ -12,12 +12,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub const DEFAULT_PORT: &'static str = "127.0.0.1:20777";
-
-    #[inline]
-    pub async fn connect_default() -> Result<Self> {
-        Self::connect(Self::DEFAULT_PORT).await
-    }
+    pub const DEFAULT_URI: &'static str = "127.0.0.1:20777";
 
     pub async fn connect(port: &str) -> Result<Self> {
         let slf = Self {

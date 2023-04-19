@@ -1,6 +1,6 @@
 // https://en.wikipedia.org/wiki/Racing_flags
 
-#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct RacingFlags {
     pub green: bool,
     pub yellow: bool,

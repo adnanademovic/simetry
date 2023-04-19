@@ -1,4 +1,5 @@
 pub use racing_flags::RacingFlags;
+use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::time::Duration;
 use tokio::select;
@@ -7,6 +8,7 @@ use uom::si::f64::{AngularVelocity, Velocity};
 pub mod assetto_corsa;
 pub mod assetto_corsa_competizione;
 pub mod dirt_rally_2;
+pub mod generic_http;
 pub mod iracing;
 mod racing_flags;
 pub mod rfactor_2;
@@ -30,33 +32,68 @@ pub trait Simetry {
     async fn next_moment(&mut self) -> Option<Box<dyn Moment>>;
 }
 
-pub async fn connect_with_extra_options<F, R>(extra_options: F) -> Box<dyn Simetry>
-where
-    F: FnOnce() -> R,
-    R: Future<Output = Box<dyn Simetry>>,
-{
-    select! {
-        x = connect() => x,
-        x = extra_options() => x,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SimetryConnectionBuilder {
+    pub generic_http_uri: String,
+    pub truck_simulator_uri: String,
+    pub dirt_rally_2_uri: String,
+    pub retry_delay: Duration,
+}
+
+impl Default for SimetryConnectionBuilder {
+    fn default() -> Self {
+        Self {
+            generic_http_uri: "http://localhost:25555/".to_string(),
+            truck_simulator_uri: truck_simulator::DEFAULT_URI.to_string(),
+            dirt_rally_2_uri: dirt_rally_2::Client::DEFAULT_URI.to_string(),
+            retry_delay: Duration::from_secs(5),
+        }
     }
 }
 
-pub async fn connect() -> Box<dyn Simetry> {
-    let retry_delay = Duration::from_secs(5);
-    let iracing_future = loop_until_success(iracing::Client::connect, retry_delay);
-    let assetto_corsa_future = loop_until_success(assetto_corsa::Client::connect, retry_delay);
-    let assetto_corsa_competizione_future =
-        loop_until_success(assetto_corsa_competizione::Client::connect, retry_delay);
-    let rfactor_2_future = rfactor_2::Client::connect();
-    let dirt_rally_2_future =
-        loop_until_success(dirt_rally_2::Client::connect_default, retry_delay);
-    select! {
-        x = iracing_future => Box::new(x),
-        x = assetto_corsa_future => Box::new(x),
-        x = assetto_corsa_competizione_future => Box::new(x),
-        x = rfactor_2_future => Box::new(x),
-        x = dirt_rally_2_future => Box::new(x),
+impl SimetryConnectionBuilder {
+    pub async fn connect(self) -> Box<dyn Simetry> {
+        let retry_delay = self.retry_delay;
+        let iracing_future = loop_until_success(iracing::Client::connect, retry_delay);
+        let assetto_corsa_future = loop_until_success(assetto_corsa::Client::connect, retry_delay);
+        let assetto_corsa_competizione_future =
+            loop_until_success(assetto_corsa_competizione::Client::connect, retry_delay);
+        let rfactor_2_future = rfactor_2::Client::connect();
+
+        async fn loop_dirt_rally_2(uri: &str, delay: Duration) -> Box<dyn Simetry> {
+            loop {
+                if let Ok(client) = dirt_rally_2::Client::connect(uri).await {
+                    return Box::new(client);
+                }
+                tokio::time::sleep(delay).await;
+            }
+        }
+        let dirt_rally_2_future = loop_dirt_rally_2(&self.dirt_rally_2_uri, retry_delay);
+
+        async fn loop_generic_http(uri: &str, delay: Duration) -> Box<dyn Simetry> {
+            loop {
+                if let Ok(client) = generic_http::GenericHttpClient::connect(uri).await {
+                    return Box::new(client);
+                }
+                tokio::time::sleep(delay).await;
+            }
+        }
+        let generic_http_future = loop_generic_http(&self.generic_http_uri, retry_delay);
+
+        select! {
+            x = iracing_future => Box::new(x),
+            x = assetto_corsa_future => Box::new(x),
+            x = assetto_corsa_competizione_future => Box::new(x),
+            x = rfactor_2_future => Box::new(x),
+            x = dirt_rally_2_future => x,
+            x = generic_http_future => x,
+        }
     }
+}
+
+#[inline]
+pub async fn connect() -> Box<dyn Simetry> {
+    SimetryConnectionBuilder::default().connect().await
 }
 
 async fn loop_until_success<R, T, F>(f: F, delay: Duration) -> R
@@ -83,7 +120,7 @@ pub trait Moment {
     fn starter_on(&self) -> bool;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BasicTelemetry {
     pub gear: i8,
     pub speed: Velocity,
