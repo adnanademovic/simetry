@@ -8,6 +8,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 use uom::si::f64::AngularVelocity;
 
+pub const DEFAULT_ADDRESS: &str = "0.0.0.0:25055";
 pub const DEFAULT_URI: &str = "http://localhost:25055/";
 
 #[derive(Debug)]
