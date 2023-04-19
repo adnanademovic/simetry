@@ -43,7 +43,7 @@ pub struct SimetryConnectionBuilder {
 impl Default for SimetryConnectionBuilder {
     fn default() -> Self {
         Self {
-            generic_http_uri: "http://localhost:25555/".to_string(),
+            generic_http_uri: generic_http::DEFAULT_URI.to_string(),
             truck_simulator_uri: truck_simulator::DEFAULT_URI.to_string(),
             dirt_rally_2_uri: dirt_rally_2::Client::DEFAULT_URI.to_string(),
             retry_delay: Duration::from_secs(5),
