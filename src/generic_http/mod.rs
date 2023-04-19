@@ -67,12 +67,14 @@ impl Simetry for GenericHttpClient {
     }
 
     async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
-        Some(Box::new(
-            timeout(Duration::from_secs(2), self.query())
-                .await
-                .ok()?
-                .ok()?,
-        ))
+        let data = timeout(Duration::from_secs(2), self.query())
+            .await
+            .ok()?
+            .ok()?;
+        if data.name != self.name {
+            return None;
+        }
+        Some(Box::new(data))
     }
 }
 
