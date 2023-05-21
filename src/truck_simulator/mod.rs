@@ -1,7 +1,4 @@
 use crate::{unhandled, unhandled_default, BasicTelemetry, Moment, RacingFlags, Simetry};
-/// Client for Euro Truck Simulator 2 and American Truck Simulator
-///
-/// Uses https://github.com/Funbit/ets2-telemetry-server to query JSON data
 use anyhow::{Context, Result};
 use hyper::body::Buf;
 use hyper::client::HttpConnector;
@@ -17,6 +14,9 @@ use uom::si::velocity::kilometer_per_hour;
 
 pub const DEFAULT_URI: &str = "http://localhost:25555/api/ets2/telemetry";
 
+/// Client for Euro Truck Simulator 2 and American Truck Simulator
+///
+/// Uses https://github.com/Funbit/ets2-telemetry-server to query JSON data
 pub struct TruckSimulatorClient {
     name: String,
     client: Client<HttpConnector>,

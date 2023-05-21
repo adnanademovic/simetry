@@ -10,10 +10,10 @@ Currently supported sims:
 * iRacing
 * Assetto Corsa
 * Assetto Corsa Competizione
-* rFactor 2
+* rFactor 2 (via [https://github.com/TheIronWolfModding/rF2SharedMemoryMapPlugin])
 * DiRT Rally 2.0
-* Euro Truck Simulator 2
-* American Truck Simulator
+* Euro Truck Simulator 2 (via [https://github.com/Funbit/ets2-telemetry-server])
+* American Truck Simulator (via [https://github.com/Funbit/ets2-telemetry-server])
 
 Beyond that, an interface for a generic HTTP server exists, allowing you to easily emulate any sim
 to see the functionality of your software that way, instead of having to run the sim and replicating
