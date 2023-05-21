@@ -79,6 +79,15 @@ impl SimetryConnectionBuilder {
             }
         }
         let generic_http_future = loop_generic_http(&self.generic_http_uri, retry_delay);
+        async fn loop_truck_simulator(uri: &str, delay: Duration) -> Box<dyn Simetry> {
+            loop {
+                if let Ok(client) = truck_simulator::TruckSimulatorClient::connect(uri).await {
+                    return Box::new(client);
+                }
+                tokio::time::sleep(delay).await;
+            }
+        }
+        let truck_simulator_future = loop_truck_simulator(&self.truck_simulator_uri, retry_delay);
 
         select! {
             x = iracing_future => Box::new(x),
@@ -87,6 +96,7 @@ impl SimetryConnectionBuilder {
             x = rfactor_2_future => Box::new(x),
             x = dirt_rally_2_future => x,
             x = generic_http_future => x,
+            x = truck_simulator_future => x,
         }
     }
 }

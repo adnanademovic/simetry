@@ -1,21 +1,67 @@
+use crate::{unhandled, unhandled_default, BasicTelemetry, Moment, RacingFlags, Simetry};
 /// Client for Euro Truck Simulator 2 and American Truck Simulator
 ///
 /// Uses https://github.com/Funbit/ets2-telemetry-server to query JSON data
-use anyhow::Result;
+use anyhow::{Context, Result};
 use hyper::body::Buf;
-use hyper::Client;
+use hyper::client::HttpConnector;
+use hyper::{Client, Uri};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use time::serde::iso8601;
 use time::OffsetDateTime;
+use tokio::time::timeout;
+use uom::si::angular_velocity::revolution_per_minute;
+use uom::si::f64::{AngularVelocity, Velocity};
+use uom::si::velocity::kilometer_per_hour;
 
 pub const DEFAULT_URI: &str = "http://localhost:25555/api/ets2/telemetry";
 
-pub async fn query(uri: &str) -> Result<Telemetry> {
-    let client = Client::new();
-    let response = client.get(uri.parse()?).await?;
-    let bytes = hyper::body::to_bytes(response.into_body()).await?;
-    let data = serde_json::from_reader(bytes.reader())?;
-    Ok(data)
+pub struct TruckSimulatorClient {
+    name: String,
+    client: Client<HttpConnector>,
+    uri: Uri,
+}
+
+#[async_trait::async_trait]
+impl Simetry for TruckSimulatorClient {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+        let data = timeout(Duration::from_secs(2), self.query())
+            .await
+            .ok()?
+            .ok()?;
+        if data.game.game_name.as_ref()? != &self.name {
+            return None;
+        }
+        Some(Box::new(data))
+    }
+}
+
+impl TruckSimulatorClient {
+    pub async fn connect(uri: &str) -> Result<Self> {
+        let mut slf = Self {
+            name: "".to_string(),
+            client: Client::new(),
+            uri: uri.parse()?,
+        };
+        let telemetry = slf.query().await?;
+        slf.name = telemetry
+            .game
+            .game_name
+            .context("The sim is not yet running")?;
+        Ok(slf)
+    }
+
+    pub async fn query(&self) -> Result<Telemetry> {
+        let response = self.client.get(self.uri.clone()).await?;
+        let bytes = hyper::body::to_bytes(response.into_body()).await?;
+        let data = serde_json::from_reader(bytes.reader())?;
+        Ok(data)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -245,4 +291,50 @@ pub struct Telemetry {
     pub trailer: Trailer,
     pub job: Job,
     pub navigation: Navigation,
+}
+
+impl Moment for Telemetry {
+    fn car_left(&self) -> bool {
+        unhandled(false)
+    }
+
+    fn car_right(&self) -> bool {
+        unhandled(false)
+    }
+
+    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+        Some(BasicTelemetry {
+            // Maybe use displayed_gear for this?
+            gear: self.truck.gear as i8,
+            speed: Velocity::new::<kilometer_per_hour>(self.truck.speed),
+            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                self.truck.engine_rpm,
+            ),
+            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
+                self.truck.engine_rpm_max,
+            ),
+            pit_limiter_engaged: false,
+            in_pit_lane: false,
+        })
+    }
+
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        unhandled(None)
+    }
+
+    fn flags(&self) -> RacingFlags {
+        unhandled_default()
+    }
+
+    fn car_model_id(&self) -> Option<String> {
+        Some(format!("{} {}", self.truck.make, self.truck.model))
+    }
+
+    fn ignition_on(&self) -> bool {
+        self.truck.electric_on
+    }
+
+    fn starter_on(&self) -> bool {
+        unhandled(false)
+    }
 }
