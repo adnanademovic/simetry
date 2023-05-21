@@ -1,6 +1,7 @@
 use crate::{unhandled, unhandled_default, BasicTelemetry, Moment, RacingFlags, Simetry};
 use anyhow::Result;
 use std::mem::transmute;
+use std::time::Duration;
 use tokio::net::UdpSocket;
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
@@ -14,7 +15,16 @@ pub struct Client {
 impl Client {
     pub const DEFAULT_URI: &'static str = "127.0.0.1:20777";
 
-    pub async fn connect(port: &str) -> Result<Self> {
+    pub async fn connect(port: &str, retry_delay: Duration) -> Self {
+        loop {
+            if let Ok(client) = Self::try_connect(port).await {
+                return client;
+            }
+            tokio::time::sleep(retry_delay).await;
+        }
+    }
+
+    pub async fn try_connect(port: &str) -> Result<Self> {
         let slf = Self {
             socket: UdpSocket::bind(port).await?,
         };

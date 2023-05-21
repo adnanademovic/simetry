@@ -53,7 +53,16 @@ pub struct SimState<Version: AcApiVersion> {
 }
 
 impl<Version: AcApiVersion> SharedMemoryClient<Version> {
-    pub async fn connect() -> Result<Self> {
+    pub async fn connect(retry_delay: Duration) -> Self {
+        loop {
+            if let Ok(v) = Self::try_connect().await {
+                return v;
+            }
+            tokio::time::sleep(retry_delay).await;
+        }
+    }
+
+    pub async fn try_connect() -> Result<Self> {
         let poll_delay = Duration::from_millis(250);
         let graphics_data = SharedMemory::connect(b"Local\\acpmf_graphics\0", poll_delay).await;
         while !Self::is_connected(&graphics_data) {

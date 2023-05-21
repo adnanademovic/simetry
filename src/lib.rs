@@ -1,6 +1,5 @@
 pub use racing_flags::RacingFlags;
 use serde::{Deserialize, Serialize};
-use std::future::Future;
 use std::time::Duration;
 use tokio::select;
 use uom::si::f64::{AngularVelocity, Velocity};
@@ -54,49 +53,26 @@ impl Default for SimetryConnectionBuilder {
 impl SimetryConnectionBuilder {
     pub async fn connect(self) -> Box<dyn Simetry> {
         let retry_delay = self.retry_delay;
-        let iracing_future = loop_until_success(iracing::Client::connect, retry_delay);
-        let assetto_corsa_future = loop_until_success(assetto_corsa::Client::connect, retry_delay);
+        let iracing_future = iracing::Client::connect(retry_delay);
+        let assetto_corsa_future = assetto_corsa::Client::connect(retry_delay);
         let assetto_corsa_competizione_future =
-            loop_until_success(assetto_corsa_competizione::Client::connect, retry_delay);
+            assetto_corsa_competizione::Client::connect(retry_delay);
         let rfactor_2_future = rfactor_2::Client::connect();
-
-        async fn loop_dirt_rally_2(uri: &str, delay: Duration) -> Box<dyn Simetry> {
-            loop {
-                if let Ok(client) = dirt_rally_2::Client::connect(uri).await {
-                    return Box::new(client);
-                }
-                tokio::time::sleep(delay).await;
-            }
-        }
-        let dirt_rally_2_future = loop_dirt_rally_2(&self.dirt_rally_2_uri, retry_delay);
-
-        async fn loop_generic_http(uri: &str, delay: Duration) -> Box<dyn Simetry> {
-            loop {
-                if let Ok(client) = generic_http::GenericHttpClient::connect(uri).await {
-                    return Box::new(client);
-                }
-                tokio::time::sleep(delay).await;
-            }
-        }
-        let generic_http_future = loop_generic_http(&self.generic_http_uri, retry_delay);
-        async fn loop_truck_simulator(uri: &str, delay: Duration) -> Box<dyn Simetry> {
-            loop {
-                if let Ok(client) = truck_simulator::TruckSimulatorClient::connect(uri).await {
-                    return Box::new(client);
-                }
-                tokio::time::sleep(delay).await;
-            }
-        }
-        let truck_simulator_future = loop_truck_simulator(&self.truck_simulator_uri, retry_delay);
+        let dirt_rally_2_future =
+            dirt_rally_2::Client::connect(&self.dirt_rally_2_uri, retry_delay);
+        let generic_http_future =
+            generic_http::GenericHttpClient::connect(&self.generic_http_uri, retry_delay);
+        let truck_simulator_future =
+            truck_simulator::TruckSimulatorClient::connect(&self.truck_simulator_uri, retry_delay);
 
         select! {
             x = iracing_future => Box::new(x),
             x = assetto_corsa_future => Box::new(x),
             x = assetto_corsa_competizione_future => Box::new(x),
             x = rfactor_2_future => Box::new(x),
-            x = dirt_rally_2_future => x,
-            x = generic_http_future => x,
-            x = truck_simulator_future => x,
+            x = dirt_rally_2_future => Box::new(x),
+            x = generic_http_future => Box::new(x),
+            x = truck_simulator_future => Box::new(x),
         }
     }
 }
@@ -104,19 +80,6 @@ impl SimetryConnectionBuilder {
 #[inline]
 pub async fn connect() -> Box<dyn Simetry> {
     SimetryConnectionBuilder::default().connect().await
-}
-
-async fn loop_until_success<R, T, F>(f: F, delay: Duration) -> R
-where
-    T: Future<Output = anyhow::Result<R>>,
-    F: Fn() -> T,
-{
-    loop {
-        if let Ok(v) = f().await {
-            return v;
-        }
-        tokio::time::sleep(delay).await;
-    }
 }
 
 pub trait Moment {

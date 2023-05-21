@@ -42,7 +42,16 @@ impl Simetry for TruckSimulatorClient {
 }
 
 impl TruckSimulatorClient {
-    pub async fn connect(uri: &str) -> Result<Self> {
+    pub async fn connect(uri: &str, retry_delay: Duration) -> Self {
+        loop {
+            if let Ok(client) = Self::try_connect(uri).await {
+                return client;
+            }
+            tokio::time::sleep(retry_delay).await;
+        }
+    }
+
+    pub async fn try_connect(uri: &str) -> Result<Self> {
         let mut slf = Self {
             name: "".to_string(),
             client: Client::new(),
@@ -56,7 +65,7 @@ impl TruckSimulatorClient {
         Ok(slf)
     }
 
-    pub async fn query(&self) -> Result<Telemetry> {
+    pub async fn query(&self) -> Result<SimState> {
         let response = self.client.get(self.uri.clone()).await?;
         let bytes = hyper::body::to_bytes(response.into_body()).await?;
         let data = serde_json::from_reader(bytes.reader())?;
@@ -285,7 +294,7 @@ pub struct Game {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Telemetry {
+pub struct SimState {
     pub game: Game,
     pub truck: Truck,
     pub trailer: Trailer,
@@ -293,7 +302,7 @@ pub struct Telemetry {
     pub navigation: Navigation,
 }
 
-impl Moment for Telemetry {
+impl Moment for SimState {
     fn car_left(&self) -> bool {
         unhandled(false)
     }

@@ -19,7 +19,16 @@ pub struct GenericHttpClient {
 }
 
 impl GenericHttpClient {
-    pub async fn connect(uri: &str) -> Result<Self> {
+    pub async fn connect(uri: &str, retry_delay: Duration) -> Self {
+        loop {
+            if let Ok(client) = Self::try_connect(uri).await {
+                return client;
+            }
+            tokio::time::sleep(retry_delay).await;
+        }
+    }
+
+    pub async fn try_connect(uri: &str) -> Result<Self> {
         let mut slf = Self {
             name: "".to_string(),
             client: Client::new(),
