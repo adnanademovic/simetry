@@ -14,20 +14,21 @@ pub mod rfactor_2;
 pub mod truck_simulator;
 mod windows_util;
 
-#[inline]
-fn unhandled_default<T: Default>() -> T {
-    unhandled(T::default())
-}
-
+/// Explicitly marks each hardcoded value in the code that is not handled by the specific sim.
 #[inline]
 fn unhandled<T>(value: T) -> T {
     value
 }
 
+/// Sim that we can connect to via the common [`connect`] function.
 #[async_trait::async_trait]
 pub trait Simetry {
+    /// Name of the sim we are connected to.
     fn name(&self) -> &str;
 
+    /// Waits for the next reading of data from the sim and returns it.
+    ///
+    /// A `None` value means that the connection is done, similar to an iterator.
     async fn next_moment(&mut self) -> Option<Box<dyn Moment>>;
 }
 
@@ -77,20 +78,61 @@ impl SimetryConnectionBuilder {
     }
 }
 
+/// Connect to any running sim that is supported.
 #[inline]
 pub async fn connect() -> Box<dyn Simetry> {
     SimetryConnectionBuilder::default().connect().await
 }
 
+// TODO: make interface where every value is an option
+/// Generic support for any sim by providing processed data for most common data-points.
+///
+/// If a sim does not support certain data, a suitable default value is used.
+/// The documentation of every method explains why certain defaults are chosen.
 pub trait Moment {
-    fn car_left(&self) -> bool;
-    fn car_right(&self) -> bool;
-    fn basic_telemetry(&self) -> Option<BasicTelemetry>;
-    fn shift_point(&self) -> Option<AngularVelocity>;
-    fn flags(&self) -> RacingFlags;
-    fn car_model_id(&self) -> Option<String>;
-    fn ignition_on(&self) -> bool;
-    fn starter_on(&self) -> bool;
+    /// Check if there is a car to the left of the driver.
+    ///
+    /// If not supported by the sim, always returns `false`.
+    fn car_left(&self) -> bool {
+        false
+    }
+
+    /// Check if there is a car to the right of the driver.
+    ///
+    /// If not supported by the sim, always returns `false`.
+    fn car_right(&self) -> bool {
+        false
+    }
+
+    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+        None
+    }
+
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        None
+    }
+
+    fn flags(&self) -> RacingFlags {
+        RacingFlags::default()
+    }
+
+    fn car_model_id(&self) -> Option<String> {
+        None
+    }
+
+    /// Check if the ignition is on.
+    ///
+    /// If not supported by the sim, always returns `true`.
+    fn ignition_on(&self) -> bool {
+        true
+    }
+
+    /// Check if the starter motor is engaged.
+    ///
+    /// If not supported by the sim, always returns `false`.
+    fn starter_on(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

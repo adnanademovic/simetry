@@ -1,4 +1,4 @@
-use crate::{unhandled, unhandled_default, BasicTelemetry, Moment, RacingFlags, Simetry};
+use crate::{unhandled, BasicTelemetry, Moment, Simetry};
 use anyhow::Result;
 use std::mem::transmute;
 use std::time::Duration;
@@ -107,14 +107,6 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        unhandled(false)
-    }
-
-    fn car_right(&self) -> bool {
-        unhandled(false)
-    }
-
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
         let mut gear = self.gear as i8;
         if gear == 10 {
@@ -132,25 +124,5 @@ impl Moment for SimState {
             pit_limiter_engaged: unhandled(false),
             in_pit_lane: unhandled(false),
         })
-    }
-
-    fn shift_point(&self) -> Option<AngularVelocity> {
-        unhandled(None)
-    }
-
-    fn flags(&self) -> RacingFlags {
-        unhandled_default()
-    }
-
-    fn car_model_id(&self) -> Option<String> {
-        unhandled(None)
-    }
-
-    fn ignition_on(&self) -> bool {
-        unhandled(true)
-    }
-
-    fn starter_on(&self) -> bool {
-        unhandled(false)
     }
 }

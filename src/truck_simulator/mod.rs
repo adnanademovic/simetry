@@ -1,4 +1,4 @@
-use crate::{unhandled, unhandled_default, BasicTelemetry, Moment, RacingFlags, Simetry};
+use crate::{BasicTelemetry, Moment, Simetry};
 use anyhow::{Context, Result};
 use hyper::body::Buf;
 use hyper::client::HttpConnector;
@@ -303,14 +303,6 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        unhandled(false)
-    }
-
-    fn car_right(&self) -> bool {
-        unhandled(false)
-    }
-
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
         Some(BasicTelemetry {
             // Maybe use displayed_gear for this?
@@ -322,17 +314,9 @@ impl Moment for SimState {
             max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
                 self.truck.engine_rpm_max,
             ),
-            pit_limiter_engaged: false,
+            pit_limiter_engaged: self.truck.cruise_control_on,
             in_pit_lane: false,
         })
-    }
-
-    fn shift_point(&self) -> Option<AngularVelocity> {
-        unhandled(None)
-    }
-
-    fn flags(&self) -> RacingFlags {
-        unhandled_default()
     }
 
     fn car_model_id(&self) -> Option<String> {
@@ -341,9 +325,5 @@ impl Moment for SimState {
 
     fn ignition_on(&self) -> bool {
         self.truck.electric_on
-    }
-
-    fn starter_on(&self) -> bool {
-        unhandled(false)
     }
 }

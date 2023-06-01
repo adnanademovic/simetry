@@ -67,14 +67,6 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        false
-    }
-
-    fn car_right(&self) -> bool {
-        false
-    }
-
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
         Some(BasicTelemetry {
             gear: (self.physics.gear - 1) as i8,
@@ -88,10 +80,6 @@ impl Moment for SimState {
             pit_limiter_engaged: self.physics.pit_limiter_on != 0,
             in_pit_lane: self.graphics.is_in_pit_lane != 0,
         })
-    }
-
-    fn shift_point(&self) -> Option<AngularVelocity> {
-        None
     }
 
     fn flags(&self) -> RacingFlags {

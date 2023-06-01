@@ -38,14 +38,6 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        false
-    }
-
-    fn car_right(&self) -> bool {
-        false
-    }
-
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
         let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
         let player_id = player_scoring.id;
@@ -67,10 +59,6 @@ impl Moment for SimState {
             pit_limiter_engaged: player_telemetry.speed_limiter != 0,
             in_pit_lane: player_scoring.in_pits != 0,
         })
-    }
-
-    fn shift_point(&self) -> Option<AngularVelocity> {
-        None
     }
 
     fn flags(&self) -> RacingFlags {
@@ -105,13 +93,5 @@ impl Moment for SimState {
                 .trim()
                 .into(),
         )
-    }
-
-    fn ignition_on(&self) -> bool {
-        true
-    }
-
-    fn starter_on(&self) -> bool {
-        false
     }
 }
