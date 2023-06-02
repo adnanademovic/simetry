@@ -87,7 +87,7 @@ impl Moment for SimState {
         })
     }
 
-    fn flags(&self) -> RacingFlags {
+    fn flags(&self) -> Option<RacingFlags> {
         let mut flags = RacingFlags::default();
         match self.graphics.flag {
             FlagType::None => {}
@@ -100,26 +100,26 @@ impl Moment for SimState {
             FlagType::Green => flags.green = true,
             FlagType::Orange => flags.meatball = true,
         }
-        flags
+        Some(flags)
     }
 
     fn vehicle_unique_id(&self) -> Option<Cow<str>> {
         Some(self.static_data.car_model.as_str().into())
     }
 
-    fn is_left_turn_indicator_on(&self) -> bool {
-        self.graphics.direction_lights_left
+    fn is_left_turn_indicator_on(&self) -> Option<bool> {
+        Some(self.graphics.direction_lights_left)
     }
 
-    fn is_right_turn_indicator_on(&self) -> bool {
-        self.graphics.direction_lights_right
+    fn is_right_turn_indicator_on(&self) -> Option<bool> {
+        Some(self.graphics.direction_lights_right)
     }
 
-    fn is_ignition_on(&self) -> bool {
-        self.physics.ignition_on
+    fn is_ignition_on(&self) -> Option<bool> {
+        Some(self.physics.ignition_on)
     }
 
-    fn is_starter_on(&self) -> bool {
-        self.physics.starter_engine_on
+    fn is_starter_on(&self) -> Option<bool> {
+        Some(self.physics.starter_engine_on)
     }
 }

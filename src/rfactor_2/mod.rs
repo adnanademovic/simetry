@@ -62,12 +62,9 @@ impl Moment for SimState {
         })
     }
 
-    fn flags(&self) -> RacingFlags {
-        let player_scoring = match self.scoring.vehicles.iter().find(|v| v.is_player != 0) {
-            Some(v) => v,
-            None => return RacingFlags::default(),
-        };
-        RacingFlags {
+    fn flags(&self) -> Option<RacingFlags> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        Some(RacingFlags {
             green: player_scoring.flag == 0,
             yellow: player_scoring.individual_phase == 10,
             blue: player_scoring.flag == 6,
@@ -80,7 +77,7 @@ impl Moment for SimState {
             start_ready: false,
             start_set: false,
             start_go: false,
-        }
+        })
     }
 
     fn vehicle_unique_id(&self) -> Option<Cow<str>> {

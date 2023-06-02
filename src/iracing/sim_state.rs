@@ -20,16 +20,20 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
-    fn is_vehicle_left(&self) -> bool {
-        self.read_name("CarLeftRight")
-            .unwrap_or(CarPositions::Off)
-            .car_left()
+    fn is_vehicle_left(&self) -> Option<bool> {
+        Some(
+            self.read_name("CarLeftRight")
+                .unwrap_or(CarPositions::Off)
+                .car_left(),
+        )
     }
 
-    fn is_vehicle_right(&self) -> bool {
-        self.read_name("CarLeftRight")
-            .unwrap_or(CarPositions::Off)
-            .car_right()
+    fn is_vehicle_right(&self) -> Option<bool> {
+        Some(
+            self.read_name("CarLeftRight")
+                .unwrap_or(CarPositions::Off)
+                .car_right(),
+        )
     }
 
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
@@ -55,10 +59,10 @@ impl Moment for SimState {
         ))
     }
 
-    fn flags(&self) -> RacingFlags {
-        let flags: BitField = self.read_name("SessionFlags").unwrap_or(BitField(0));
+    fn flags(&self) -> Option<RacingFlags> {
+        let flags: BitField = self.read_name("SessionFlags")?;
 
-        RacingFlags {
+        Some(RacingFlags {
             green: flags.0 & global_flags::GREEN != 0,
             yellow: flags.0 & global_flags::YELLOW != 0,
             blue: flags.0 & global_flags::BLUE != 0,
@@ -75,7 +79,7 @@ impl Moment for SimState {
             start_ready: flags.0 & start_flags::READY != 0,
             start_set: flags.0 & start_flags::SET != 0,
             start_go: flags.0 & start_flags::GO != 0,
-        }
+        })
     }
 
     fn vehicle_unique_id(&self) -> Option<Cow<str>> {
@@ -89,12 +93,12 @@ impl Moment for SimState {
         Some(format!("{vehicle_unique_id}").into())
     }
 
-    fn is_ignition_on(&self) -> bool {
-        self.read_name("Voltage").unwrap_or(0.0f32) > 1.0
+    fn is_ignition_on(&self) -> Option<bool> {
+        Some(self.read_name("Voltage").unwrap_or(0.0f32) > 1.0)
     }
 
-    fn is_starter_on(&self) -> bool {
-        self.read_name("dcStarter").unwrap_or(false)
+    fn is_starter_on(&self) -> Option<bool> {
+        self.read_name("dcStarter")
     }
 }
 

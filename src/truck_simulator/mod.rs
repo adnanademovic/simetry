@@ -328,15 +328,15 @@ impl Moment for SimState {
         Some(self.truck.model.as_str().into())
     }
 
-    fn is_left_turn_indicator_on(&self) -> bool {
-        self.truck.blinker_left_active
+    fn is_left_turn_indicator_on(&self) -> Option<bool> {
+        Some(self.truck.blinker_left_active)
     }
 
-    fn is_right_turn_indicator_on(&self) -> bool {
-        self.truck.blinker_right_active
+    fn is_right_turn_indicator_on(&self) -> Option<bool> {
+        Some(self.truck.blinker_right_active)
     }
 
-    fn is_ignition_on(&self) -> bool {
-        self.truck.electric_on
+    fn is_ignition_on(&self) -> Option<bool> {
+        Some(self.truck.electric_on)
     }
 }

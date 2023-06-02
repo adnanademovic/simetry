@@ -85,24 +85,16 @@ pub async fn connect() -> Box<dyn Simetry> {
     SimetryConnectionBuilder::default().connect().await
 }
 
-// TODO: make interface where every value is an option
 /// Generic support for any sim by providing processed data for most common data-points.
-///
-/// If a sim does not support certain data, a suitable default value is used.
-/// The documentation of every method explains why certain defaults are chosen.
 pub trait Moment {
     /// Check if there is a vehicle to the left of the driver.
-    ///
-    /// If not supported by the sim, always returns `false`.
-    fn is_vehicle_left(&self) -> bool {
-        false
+    fn is_vehicle_left(&self) -> Option<bool> {
+        None
     }
 
     /// Check if there is a vehicle to the right of the driver.
-    ///
-    /// If not supported by the sim, always returns `false`.
-    fn is_vehicle_right(&self) -> bool {
-        false
+    fn is_vehicle_right(&self) -> Option<bool> {
+        None
     }
 
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
@@ -113,8 +105,8 @@ pub trait Moment {
         None
     }
 
-    fn flags(&self) -> RacingFlags {
-        RacingFlags::default()
+    fn flags(&self) -> Option<RacingFlags> {
+        None
     }
 
     /// ID that should be consistent to all vehicles of the same brand in the specific sim.
@@ -149,36 +141,32 @@ pub trait Moment {
     /// Left turn indicator is enabled.
     ///
     /// This does not specify whether the blinker light is on or off, just that it's blinking.
-    fn is_left_turn_indicator_on(&self) -> bool {
-        false
+    fn is_left_turn_indicator_on(&self) -> Option<bool> {
+        None
     }
 
     /// Right turn indicator is enabled.
     ///
     /// This does not specify whether the blinker light is on or off, just that it's blinking.
-    fn is_right_turn_indicator_on(&self) -> bool {
-        false
+    fn is_right_turn_indicator_on(&self) -> Option<bool> {
+        None
     }
 
     /// Hazard indicator is enabled.
     ///
     /// This does not specify whether the lights are on or off, just that it's blinking.
-    fn is_hazard_indicator_on(&self) -> bool {
-        self.is_left_turn_indicator_on() && self.is_right_turn_indicator_on()
+    fn is_hazard_indicator_on(&self) -> Option<bool> {
+        Some(self.is_left_turn_indicator_on()? && self.is_right_turn_indicator_on()?)
     }
 
     /// Check if the ignition is on.
-    ///
-    /// If not supported by the sim, always returns `true`.
-    fn is_ignition_on(&self) -> bool {
-        true
+    fn is_ignition_on(&self) -> Option<bool> {
+        None
     }
 
     /// Check if the starter motor is engaged.
-    ///
-    /// If not supported by the sim, always returns `false`.
-    fn is_starter_on(&self) -> bool {
-        false
+    fn is_starter_on(&self) -> Option<bool> {
+        None
     }
 }
 

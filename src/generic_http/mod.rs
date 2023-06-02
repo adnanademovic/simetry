@@ -53,21 +53,21 @@ pub struct SimState {
     #[serde(default)]
     pub name: String,
     #[serde(default)]
-    pub vehicle_left: bool,
+    pub vehicle_left: Option<bool>,
     #[serde(default)]
-    pub vehicle_right: bool,
+    pub vehicle_right: Option<bool>,
     #[serde(default)]
     pub basic_telemetry: Option<BasicTelemetry>,
     #[serde(default)]
     pub shift_point: Option<AngularVelocity>,
     #[serde(default)]
-    pub flags: RacingFlags,
+    pub flags: Option<RacingFlags>,
     #[serde(default)]
     pub vehicle_unique_id: Option<String>,
     #[serde(default)]
-    pub ignition_on: bool,
+    pub ignition_on: Option<bool>,
     #[serde(default)]
-    pub starter_on: bool,
+    pub starter_on: Option<bool>,
 }
 
 #[async_trait::async_trait]
@@ -89,11 +89,11 @@ impl Simetry for GenericHttpClient {
 }
 
 impl Moment for SimState {
-    fn is_vehicle_left(&self) -> bool {
+    fn is_vehicle_left(&self) -> Option<bool> {
         self.vehicle_left
     }
 
-    fn is_vehicle_right(&self) -> bool {
+    fn is_vehicle_right(&self) -> Option<bool> {
         self.vehicle_right
     }
 
@@ -105,7 +105,7 @@ impl Moment for SimState {
         self.shift_point
     }
 
-    fn flags(&self) -> RacingFlags {
+    fn flags(&self) -> Option<RacingFlags> {
         self.flags.clone()
     }
 
@@ -113,11 +113,11 @@ impl Moment for SimState {
         Some(self.vehicle_unique_id.as_ref()?.into())
     }
 
-    fn is_ignition_on(&self) -> bool {
+    fn is_ignition_on(&self) -> Option<bool> {
         self.ignition_on
     }
 
-    fn is_starter_on(&self) -> bool {
+    fn is_starter_on(&self) -> Option<bool> {
         self.starter_on
     }
 }
