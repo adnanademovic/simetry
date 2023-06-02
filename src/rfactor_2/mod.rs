@@ -9,6 +9,7 @@ mod shared_memory_data;
 use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
 pub use client::{Client, Config};
 pub use data::{Extended, ForceFeedback, MultiRules, PitInfo, Rules, Scoring, Telemetry, Weather};
+use std::borrow::Cow;
 use std::sync::Arc;
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
@@ -82,7 +83,7 @@ impl Moment for SimState {
         }
     }
 
-    fn vehicle_unique_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
         let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
         Some(
             player_scoring

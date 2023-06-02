@@ -4,6 +4,7 @@ use hyper::body::Buf;
 use hyper::client::HttpConnector;
 use hyper::{Client, Uri};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::time::Duration;
 use time::serde::iso8601;
 use time::OffsetDateTime;
@@ -319,11 +320,23 @@ impl Moment for SimState {
         })
     }
 
-    fn vehicle_unique_id(&self) -> Option<String> {
-        Some(format!("{} {}", self.truck.make, self.truck.model))
+    fn vehicle_brand_id(&self) -> Option<Cow<str>> {
+        Some(self.truck.make.as_str().into())
     }
 
-    fn ignition_on(&self) -> bool {
+    fn vehicle_model_id(&self) -> Option<Cow<str>> {
+        Some(self.truck.model.as_str().into())
+    }
+
+    fn is_left_turn_indicator_on(&self) -> bool {
+        self.truck.blinker_left_active
+    }
+
+    fn is_right_turn_indicator_on(&self) -> bool {
+        self.truck.blinker_right_active
+    }
+
+    fn is_ignition_on(&self) -> bool {
         self.truck.electric_on
     }
 }

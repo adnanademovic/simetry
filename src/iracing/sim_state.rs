@@ -3,6 +3,7 @@ use crate::iracing::{
     BitField, CarPositions, Header, Value, VarData, VarHeader, VarHeaders, VarType,
 };
 use crate::{BasicTelemetry, Moment, RacingFlags};
+use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use uom::si::angular_velocity::revolution_per_minute;
@@ -19,13 +20,13 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
-    fn vehicle_left(&self) -> bool {
+    fn is_vehicle_left(&self) -> bool {
         self.read_name("CarLeftRight")
             .unwrap_or(CarPositions::Off)
             .car_left()
     }
 
-    fn vehicle_right(&self) -> bool {
+    fn is_vehicle_right(&self) -> bool {
         self.read_name("CarLeftRight")
             .unwrap_or(CarPositions::Off)
             .car_right()
@@ -77,7 +78,7 @@ impl Moment for SimState {
         }
     }
 
-    fn vehicle_unique_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
         let driver_info = &self.session_info["DriverInfo"];
         let player_car_idx = driver_info["DriverCarIdx"].as_i64()?;
         let player_driver = driver_info["Drivers"]
@@ -85,14 +86,14 @@ impl Moment for SimState {
             .iter()
             .find(|driver| driver["CarIdx"].as_i64() == Some(player_car_idx))?;
         let vehicle_unique_id = player_driver["CarID"].as_i64()?;
-        Some(format!("{vehicle_unique_id}"))
+        Some(format!("{vehicle_unique_id}").into())
     }
 
-    fn ignition_on(&self) -> bool {
+    fn is_ignition_on(&self) -> bool {
         self.read_name("Voltage").unwrap_or(0.0f32) > 1.0
     }
 
-    fn starter_on(&self) -> bool {
+    fn is_starter_on(&self) -> bool {
         self.read_name("dcStarter").unwrap_or(false)
     }
 }

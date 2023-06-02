@@ -4,6 +4,7 @@ use hyper::body::Buf;
 use hyper::client::HttpConnector;
 use hyper::{Client, Uri};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::time::Duration;
 use tokio::time::timeout;
 use uom::si::f64::AngularVelocity;
@@ -88,11 +89,11 @@ impl Simetry for GenericHttpClient {
 }
 
 impl Moment for SimState {
-    fn vehicle_left(&self) -> bool {
+    fn is_vehicle_left(&self) -> bool {
         self.vehicle_left
     }
 
-    fn vehicle_right(&self) -> bool {
+    fn is_vehicle_right(&self) -> bool {
         self.vehicle_right
     }
 
@@ -108,15 +109,15 @@ impl Moment for SimState {
         self.flags.clone()
     }
 
-    fn vehicle_unique_id(&self) -> Option<String> {
-        self.vehicle_unique_id.clone()
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
+        Some(self.vehicle_unique_id.as_ref()?.into())
     }
 
-    fn ignition_on(&self) -> bool {
+    fn is_ignition_on(&self) -> bool {
         self.ignition_on
     }
 
-    fn starter_on(&self) -> bool {
+    fn is_starter_on(&self) -> bool {
         self.starter_on
     }
 }

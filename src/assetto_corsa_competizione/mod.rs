@@ -8,6 +8,7 @@ use crate::assetto_corsa_competizione::shared_memory_data::{
     PageFileGraphics, PageFilePhysics, PageFileStatic,
 };
 use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
+use std::borrow::Cow;
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
 use uom::si::velocity::kilometer_per_hour;
@@ -102,15 +103,23 @@ impl Moment for SimState {
         flags
     }
 
-    fn vehicle_unique_id(&self) -> Option<String> {
-        Some(self.static_data.car_model.clone())
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
+        Some(self.static_data.car_model.as_str().into())
     }
 
-    fn ignition_on(&self) -> bool {
+    fn is_left_turn_indicator_on(&self) -> bool {
+        self.graphics.direction_lights_left
+    }
+
+    fn is_right_turn_indicator_on(&self) -> bool {
+        self.graphics.direction_lights_right
+    }
+
+    fn is_ignition_on(&self) -> bool {
         self.physics.ignition_on
     }
 
-    fn starter_on(&self) -> bool {
+    fn is_starter_on(&self) -> bool {
         self.physics.starter_engine_on
     }
 }

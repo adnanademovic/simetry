@@ -1,5 +1,6 @@
 pub use racing_flags::RacingFlags;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::time::Duration;
 use tokio::select;
 use uom::si::f64::{AngularVelocity, Velocity};
@@ -93,14 +94,14 @@ pub trait Moment {
     /// Check if there is a vehicle to the left of the driver.
     ///
     /// If not supported by the sim, always returns `false`.
-    fn vehicle_left(&self) -> bool {
+    fn is_vehicle_left(&self) -> bool {
         false
     }
 
     /// Check if there is a vehicle to the right of the driver.
     ///
     /// If not supported by the sim, always returns `false`.
-    fn vehicle_right(&self) -> bool {
+    fn is_vehicle_right(&self) -> bool {
         false
     }
 
@@ -116,25 +117,67 @@ pub trait Moment {
         RacingFlags::default()
     }
 
-    /// ID that uniquely identifies the current vehicle make and model.
+    /// ID that should be consistent to all vehicles of the same brand in the specific sim.
     ///
-    /// If you want to provide behavior for a specific vehicle make and model,
-    /// this property is the right choice.
-    fn vehicle_unique_id(&self) -> Option<String> {
+    /// The same brand can have different IDs in different sims. A car brand called "Lemon"
+    /// could be represented in many ways: "lemon", "LEMON", "Lemon", "Lemon Car Company", "57" etc.
+    ///
+    /// This interface basically allows for easily correlating cars of the same brand in a sim.
+    fn vehicle_brand_id(&self) -> Option<Cow<str>> {
         None
+    }
+
+    /// ID that describes a specific model of a car in the specific sim.
+    ///
+    /// This interface does not not uniquely identify a specific brand and model, because two
+    /// different brands may have a model with the same name. For unique identifiers, use
+    /// [`Moment::vehicle_unique_id`].
+    fn vehicle_model_id(&self) -> Option<Cow<str>> {
+        None
+    }
+
+    /// ID that uniquely identifies the current vehicle brand and model.
+    ///
+    /// If you want to provide behavior for a specific vehicle brand and model,
+    /// this property is the right choice.
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
+        let brand = self.vehicle_brand_id()?;
+        let model = self.vehicle_model_id()?;
+        Some(format!("{brand}|{model}").into())
+    }
+
+    /// Left turn indicator is enabled.
+    ///
+    /// This does not specify whether the blinker light is on or off, just that it's blinking.
+    fn is_left_turn_indicator_on(&self) -> bool {
+        false
+    }
+
+    /// Right turn indicator is enabled.
+    ///
+    /// This does not specify whether the blinker light is on or off, just that it's blinking.
+    fn is_right_turn_indicator_on(&self) -> bool {
+        false
+    }
+
+    /// Hazard indicator is enabled.
+    ///
+    /// This does not specify whether the lights are on or off, just that it's blinking.
+    fn is_hazard_indicator_on(&self) -> bool {
+        self.is_left_turn_indicator_on() && self.is_right_turn_indicator_on()
     }
 
     /// Check if the ignition is on.
     ///
     /// If not supported by the sim, always returns `true`.
-    fn ignition_on(&self) -> bool {
+    fn is_ignition_on(&self) -> bool {
         true
     }
 
     /// Check if the starter motor is engaged.
     ///
     /// If not supported by the sim, always returns `false`.
-    fn starter_on(&self) -> bool {
+    fn is_starter_on(&self) -> bool {
         false
     }
 }
