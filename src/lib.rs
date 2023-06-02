@@ -90,17 +90,17 @@ pub async fn connect() -> Box<dyn Simetry> {
 /// If a sim does not support certain data, a suitable default value is used.
 /// The documentation of every method explains why certain defaults are chosen.
 pub trait Moment {
-    /// Check if there is a car to the left of the driver.
+    /// Check if there is a vehicle to the left of the driver.
     ///
     /// If not supported by the sim, always returns `false`.
-    fn car_left(&self) -> bool {
+    fn vehicle_left(&self) -> bool {
         false
     }
 
-    /// Check if there is a car to the right of the driver.
+    /// Check if there is a vehicle to the right of the driver.
     ///
     /// If not supported by the sim, always returns `false`.
-    fn car_right(&self) -> bool {
+    fn vehicle_right(&self) -> bool {
         false
     }
 
@@ -116,7 +116,11 @@ pub trait Moment {
         RacingFlags::default()
     }
 
-    fn car_model_id(&self) -> Option<String> {
+    /// ID that uniquely identifies the current vehicle make and model.
+    ///
+    /// If you want to provide behavior for a specific vehicle make and model,
+    /// this property is the right choice.
+    fn vehicle_unique_id(&self) -> Option<String> {
         None
     }
 

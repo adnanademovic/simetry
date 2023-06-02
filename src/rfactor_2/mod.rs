@@ -82,7 +82,7 @@ impl Moment for SimState {
         }
     }
 
-    fn car_model_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<String> {
         let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
         Some(
             player_scoring

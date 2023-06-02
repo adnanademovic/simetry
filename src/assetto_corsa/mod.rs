@@ -98,7 +98,7 @@ impl Moment for SimState {
         flags
     }
 
-    fn car_model_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<String> {
         Some(self.static_data.car_model.clone())
     }
 

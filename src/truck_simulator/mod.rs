@@ -319,7 +319,7 @@ impl Moment for SimState {
         })
     }
 
-    fn car_model_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<String> {
         Some(format!("{} {}", self.truck.make, self.truck.model))
     }
 

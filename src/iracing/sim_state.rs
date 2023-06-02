@@ -19,13 +19,13 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
+    fn vehicle_left(&self) -> bool {
         self.read_name("CarLeftRight")
             .unwrap_or(CarPositions::Off)
             .car_left()
     }
 
-    fn car_right(&self) -> bool {
+    fn vehicle_right(&self) -> bool {
         self.read_name("CarLeftRight")
             .unwrap_or(CarPositions::Off)
             .car_right()
@@ -77,15 +77,15 @@ impl Moment for SimState {
         }
     }
 
-    fn car_model_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<String> {
         let driver_info = &self.session_info["DriverInfo"];
         let player_car_idx = driver_info["DriverCarIdx"].as_i64()?;
         let player_driver = driver_info["Drivers"]
             .as_vec()?
             .iter()
             .find(|driver| driver["CarIdx"].as_i64() == Some(player_car_idx))?;
-        let car_model_id = player_driver["CarID"].as_i64()?;
-        Some(format!("{car_model_id}"))
+        let vehicle_unique_id = player_driver["CarID"].as_i64()?;
+        Some(format!("{vehicle_unique_id}"))
     }
 
     fn ignition_on(&self) -> bool {

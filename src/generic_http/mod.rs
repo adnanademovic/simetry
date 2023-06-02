@@ -52,9 +52,9 @@ pub struct SimState {
     #[serde(default)]
     pub name: String,
     #[serde(default)]
-    pub car_left: bool,
+    pub vehicle_left: bool,
     #[serde(default)]
-    pub car_right: bool,
+    pub vehicle_right: bool,
     #[serde(default)]
     pub basic_telemetry: Option<BasicTelemetry>,
     #[serde(default)]
@@ -62,7 +62,7 @@ pub struct SimState {
     #[serde(default)]
     pub flags: RacingFlags,
     #[serde(default)]
-    pub car_model_id: Option<String>,
+    pub vehicle_unique_id: Option<String>,
     #[serde(default)]
     pub ignition_on: bool,
     #[serde(default)]
@@ -88,12 +88,12 @@ impl Simetry for GenericHttpClient {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        self.car_left
+    fn vehicle_left(&self) -> bool {
+        self.vehicle_left
     }
 
-    fn car_right(&self) -> bool {
-        self.car_right
+    fn vehicle_right(&self) -> bool {
+        self.vehicle_right
     }
 
     fn basic_telemetry(&self) -> Option<BasicTelemetry> {
@@ -108,8 +108,8 @@ impl Moment for SimState {
         self.flags.clone()
     }
 
-    fn car_model_id(&self) -> Option<String> {
-        self.car_model_id.clone()
+    fn vehicle_unique_id(&self) -> Option<String> {
+        self.vehicle_unique_id.clone()
     }
 
     fn ignition_on(&self) -> bool {
