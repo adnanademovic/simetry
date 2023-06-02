@@ -1,5 +1,4 @@
 pub use racing_flags::RacingFlags;
-use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::time::Duration;
 use tokio::select;
@@ -14,12 +13,6 @@ mod racing_flags;
 pub mod rfactor_2;
 pub mod truck_simulator;
 mod windows_util;
-
-/// Explicitly marks each hardcoded value in the code that is not handled by the specific sim.
-#[inline]
-fn unhandled<T>(value: T) -> T {
-    value
-}
 
 /// Sim that we can connect to via the common [`connect`] function.
 #[async_trait::async_trait]
@@ -87,6 +80,30 @@ pub async fn connect() -> Box<dyn Simetry> {
 
 /// Generic support for any sim by providing processed data for most common data-points.
 pub trait Moment {
+    fn vehicle_gear(&self) -> Option<i8> {
+        None
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        None
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        None
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        None
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        None
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        None
+    }
+
     /// Check if there is a vehicle to the left of the driver.
     fn is_vehicle_left(&self) -> Option<bool> {
         None
@@ -94,10 +111,6 @@ pub trait Moment {
 
     /// Check if there is a vehicle to the right of the driver.
     fn is_vehicle_right(&self) -> Option<bool> {
-        None
-    }
-
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
         None
     }
 
@@ -168,14 +181,4 @@ pub trait Moment {
     fn is_starter_on(&self) -> Option<bool> {
         None
     }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct BasicTelemetry {
-    pub gear: i8,
-    pub speed: Velocity,
-    pub engine_rotation_speed: AngularVelocity,
-    pub max_engine_rotation_speed: AngularVelocity,
-    pub pit_limiter_engaged: bool,
-    pub in_pit_lane: bool,
 }

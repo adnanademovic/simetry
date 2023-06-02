@@ -2,7 +2,7 @@ use crate::iracing::flags::{driver_black_flags, global_flags, start_flags};
 use crate::iracing::{
     BitField, CarPositions, Header, Value, VarData, VarHeader, VarHeaders, VarType,
 };
-use crate::{BasicTelemetry, Moment, RacingFlags};
+use crate::{Moment, RacingFlags};
 use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
@@ -20,6 +20,34 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
+    fn vehicle_gear(&self) -> Option<i8> {
+        self.read_name::<i32>("Gear")?.try_into().ok()
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<meter_per_second>(self.read_name("Speed")?))
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.read_name("RPM")?,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.session_info()["DriverInfo"]["DriverCarRedLine"].as_f64()?,
+        ))
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        self.read_name("dcPitSpeedLimiterToggle")
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        self.read_name("OnPitRoad")
+    }
+
     fn is_vehicle_left(&self) -> Option<bool> {
         Some(
             self.read_name("CarLeftRight")
@@ -34,23 +62,6 @@ impl Moment for SimState {
                 .unwrap_or(CarPositions::Off)
                 .car_right(),
         )
-    }
-
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        Some(BasicTelemetry {
-            gear: self.read_name("Gear").unwrap_or(0i32) as i8,
-            speed: Velocity::new::<meter_per_second>(self.read_name("Speed").unwrap_or(0.0)),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.read_name("RPM").unwrap_or(0.0),
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.session_info()["DriverInfo"]["DriverCarRedLine"]
-                    .as_f64()
-                    .unwrap_or(f64::INFINITY),
-            ),
-            pit_limiter_engaged: self.read_name("dcPitSpeedLimiterToggle").unwrap_or(false),
-            in_pit_lane: self.read_name("OnPitRoad").unwrap_or(false),
-        })
     }
 
     fn shift_point(&self) -> Option<AngularVelocity> {

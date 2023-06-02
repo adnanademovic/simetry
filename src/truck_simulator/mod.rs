@@ -1,4 +1,4 @@
-use crate::{BasicTelemetry, Moment, Simetry};
+use crate::{Moment, Simetry};
 use anyhow::{Context, Result};
 use hyper::body::Buf;
 use hyper::client::HttpConnector;
@@ -304,20 +304,25 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        Some(BasicTelemetry {
-            // Maybe use displayed_gear for this?
-            gear: self.truck.gear as i8,
-            speed: Velocity::new::<kilometer_per_hour>(self.truck.speed),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.truck.engine_rpm,
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.truck.engine_rpm_max,
-            ),
-            pit_limiter_engaged: self.truck.cruise_control_on,
-            in_pit_lane: false,
-        })
+    fn vehicle_gear(&self) -> Option<i8> {
+        // Maybe use displayed_gear for this?
+        Some(self.truck.gear as i8)
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<kilometer_per_hour>(self.truck.speed))
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.truck.engine_rpm,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.truck.engine_rpm_max,
+        ))
     }
 
     fn vehicle_brand_id(&self) -> Option<Cow<str>> {

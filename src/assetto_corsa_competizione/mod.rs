@@ -7,7 +7,7 @@ pub use crate::assetto_corsa_competizione::data::{
 use crate::assetto_corsa_competizione::shared_memory_data::{
     PageFileGraphics, PageFilePhysics, PageFileStatic,
 };
-use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
+use crate::{Moment, RacingFlags, Simetry};
 use std::borrow::Cow;
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
@@ -72,19 +72,34 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        Some(BasicTelemetry {
-            gear: (self.physics.gear - 1) as i8,
-            speed: Velocity::new::<kilometer_per_hour>(self.physics.speed_kmh as f64),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.physics.rpm as f64,
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.static_data.max_rpm as f64,
-            ),
-            pit_limiter_engaged: self.physics.pit_limiter_on,
-            in_pit_lane: self.graphics.is_in_pit_lane,
-        })
+    fn vehicle_gear(&self) -> Option<i8> {
+        Some((self.physics.gear - 1) as i8)
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<kilometer_per_hour>(
+            self.physics.speed_kmh as f64,
+        ))
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.physics.rpm as f64,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.static_data.max_rpm as f64,
+        ))
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        Some(self.physics.pit_limiter_on)
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        Some(self.graphics.is_in_pit_lane)
     }
 
     fn flags(&self) -> Option<RacingFlags> {

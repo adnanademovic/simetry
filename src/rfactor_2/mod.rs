@@ -6,7 +6,7 @@ mod client;
 mod data;
 mod shared_memory_data;
 
-use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
+use crate::{Moment, RacingFlags, Simetry};
 pub use client::{Client, Config};
 pub use data::{Extended, ForceFeedback, MultiRules, PitInfo, Rules, Scoring, Telemetry, Weather};
 use std::borrow::Cow;
@@ -39,7 +39,14 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+    fn vehicle_gear(&self) -> Option<i8> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        let player_id = player_scoring.id;
+        let player_telemetry = self.telemetry.vehicles.iter().find(|v| v.id == player_id)?;
+        Some(player_telemetry.gear as i8)
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
         let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
         let player_id = player_scoring.id;
         let player_telemetry = self.telemetry.vehicles.iter().find(|v| v.id == player_id)?;
@@ -48,18 +55,37 @@ impl Moment for SimState {
             + speed_vec_ms.y * speed_vec_ms.y
             + speed_vec_ms.z * speed_vec_ms.z)
             .sqrt();
-        Some(BasicTelemetry {
-            gear: player_telemetry.gear as i8,
-            speed: Velocity::new::<meter_per_second>(speed_ms),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                player_telemetry.engine_rpm,
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                player_telemetry.engine_max_rpm,
-            ),
-            pit_limiter_engaged: player_telemetry.speed_limiter != 0,
-            in_pit_lane: player_scoring.in_pits != 0,
-        })
+        Some(Velocity::new::<meter_per_second>(speed_ms))
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        let player_id = player_scoring.id;
+        let player_telemetry = self.telemetry.vehicles.iter().find(|v| v.id == player_id)?;
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            player_telemetry.engine_rpm,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        let player_id = player_scoring.id;
+        let player_telemetry = self.telemetry.vehicles.iter().find(|v| v.id == player_id)?;
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            player_telemetry.engine_max_rpm,
+        ))
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        let player_id = player_scoring.id;
+        let player_telemetry = self.telemetry.vehicles.iter().find(|v| v.id == player_id)?;
+        Some(player_telemetry.speed_limiter != 0)
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        let player_scoring = self.scoring.vehicles.iter().find(|v| v.is_player != 0)?;
+        Some(player_scoring.in_pits != 0)
     }
 
     fn flags(&self) -> Option<RacingFlags> {

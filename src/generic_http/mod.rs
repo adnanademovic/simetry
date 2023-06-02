@@ -1,4 +1,4 @@
-use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
+use crate::{Moment, RacingFlags, Simetry};
 use anyhow::Result;
 use hyper::body::Buf;
 use hyper::client::HttpConnector;
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::time::Duration;
 use tokio::time::timeout;
-use uom::si::f64::AngularVelocity;
+use uom::si::f64::{AngularVelocity, Velocity};
 
 pub const DEFAULT_ADDRESS: &str = "0.0.0.0:25055";
 pub const DEFAULT_URI: &str = "http://localhost:25055/";
@@ -57,7 +57,17 @@ pub struct SimState {
     #[serde(default)]
     pub vehicle_right: Option<bool>,
     #[serde(default)]
-    pub basic_telemetry: Option<BasicTelemetry>,
+    pub gear: Option<i8>,
+    #[serde(default)]
+    pub speed: Option<Velocity>,
+    #[serde(default)]
+    pub engine_rotation_speed: Option<AngularVelocity>,
+    #[serde(default)]
+    pub max_engine_rotation_speed: Option<AngularVelocity>,
+    #[serde(default)]
+    pub pit_limiter_engaged: Option<bool>,
+    #[serde(default)]
+    pub in_pit_lane: Option<bool>,
     #[serde(default)]
     pub shift_point: Option<AngularVelocity>,
     #[serde(default)]
@@ -89,16 +99,36 @@ impl Simetry for GenericHttpClient {
 }
 
 impl Moment for SimState {
+    fn vehicle_gear(&self) -> Option<i8> {
+        self.gear
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        self.speed
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        self.engine_rotation_speed
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        self.max_engine_rotation_speed
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        self.pit_limiter_engaged
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        self.in_pit_lane
+    }
+
     fn is_vehicle_left(&self) -> Option<bool> {
         self.vehicle_left
     }
 
     fn is_vehicle_right(&self) -> Option<bool> {
         self.vehicle_right
-    }
-
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        self.basic_telemetry.clone()
     }
 
     fn shift_point(&self) -> Option<AngularVelocity> {

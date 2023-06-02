@@ -1,4 +1,4 @@
-use crate::{unhandled, BasicTelemetry, Moment, Simetry};
+use crate::{Moment, Simetry};
 use anyhow::Result;
 use std::mem::transmute;
 use std::time::Duration;
@@ -107,22 +107,27 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
+    fn vehicle_gear(&self) -> Option<i8> {
         let mut gear = self.gear as i8;
         if gear == 10 {
             gear = -1;
         }
-        Some(BasicTelemetry {
-            gear,
-            speed: Velocity::new::<meter_per_second>(self.velocity_ms as f64),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.speed_of_engine_rpm_div_10 as f64 * 10.0,
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.maximum_rpm_div_10 as f64 * 10.0,
-            ),
-            pit_limiter_engaged: unhandled(false),
-            in_pit_lane: unhandled(false),
-        })
+        Some(gear)
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<meter_per_second>(self.velocity_ms as f64))
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.speed_of_engine_rpm_div_10 as f64 * 10.0,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.maximum_rpm_div_10 as f64 * 10.0,
+        ))
     }
 }
