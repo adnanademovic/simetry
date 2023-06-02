@@ -1,8 +1,9 @@
 use crate::iracing::{BitField, VarData, VarType};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum CarPositions {
     /// Check is off.
+    #[default]
     Off = 0,
     /// No cars around us.
     Clear = 1,
@@ -16,12 +17,6 @@ pub enum CarPositions {
     CarsLeft = 5,
     /// There are two cars to our right.
     CarsRight = 6,
-}
-
-impl Default for CarPositions {
-    fn default() -> Self {
-        CarPositions::Off
-    }
 }
 
 impl CarPositions {

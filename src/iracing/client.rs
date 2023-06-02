@@ -35,7 +35,16 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn connect() -> Result<Self> {
+    pub async fn connect(retry_delay: Duration) -> Self {
+        loop {
+            if let Ok(v) = Self::try_connect().await {
+                return v;
+            }
+            tokio::time::sleep(retry_delay).await;
+        }
+    }
+
+    pub async fn try_connect() -> Result<Self> {
         let shared_memory = SharedMemory::connect();
         let data_valid_event = DataValidEvent::connect();
 

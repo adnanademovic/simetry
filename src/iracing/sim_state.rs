@@ -2,7 +2,8 @@ use crate::iracing::flags::{driver_black_flags, global_flags, start_flags};
 use crate::iracing::{
     BitField, CarPositions, Header, Value, VarData, VarHeader, VarHeaders, VarType,
 };
-use crate::{BasicTelemetry, Moment, RacingFlags};
+use crate::{Moment, RacingFlags};
+use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use uom::si::angular_velocity::revolution_per_minute;
@@ -19,33 +20,48 @@ pub struct SimState {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        self.read_name("CarLeftRight")
-            .unwrap_or(CarPositions::Off)
-            .car_left()
+    fn vehicle_gear(&self) -> Option<i8> {
+        self.read_name::<i32>("Gear")?.try_into().ok()
     }
 
-    fn car_right(&self) -> bool {
-        self.read_name("CarLeftRight")
-            .unwrap_or(CarPositions::Off)
-            .car_right()
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<meter_per_second>(self.read_name("Speed")?))
     }
 
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        Some(BasicTelemetry {
-            gear: self.read_name("Gear").unwrap_or(0i32) as i8,
-            speed: Velocity::new::<meter_per_second>(self.read_name("Speed").unwrap_or(0.0)),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.read_name("RPM").unwrap_or(0.0),
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.session_info()["DriverInfo"]["DriverCarRedLine"]
-                    .as_f64()
-                    .unwrap_or(f64::INFINITY),
-            ),
-            pit_limiter_engaged: self.read_name("dcPitSpeedLimiterToggle").unwrap_or(false),
-            in_pit_lane: self.read_name("OnPitRoad").unwrap_or(false),
-        })
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.read_name("RPM")?,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.session_info()["DriverInfo"]["DriverCarRedLine"].as_f64()?,
+        ))
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        self.read_name("dcPitSpeedLimiterToggle")
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        self.read_name("OnPitRoad")
+    }
+
+    fn is_vehicle_left(&self) -> Option<bool> {
+        Some(
+            self.read_name("CarLeftRight")
+                .unwrap_or(CarPositions::Off)
+                .car_left(),
+        )
+    }
+
+    fn is_vehicle_right(&self) -> Option<bool> {
+        Some(
+            self.read_name("CarLeftRight")
+                .unwrap_or(CarPositions::Off)
+                .car_right(),
+        )
     }
 
     fn shift_point(&self) -> Option<AngularVelocity> {
@@ -54,10 +70,10 @@ impl Moment for SimState {
         ))
     }
 
-    fn flags(&self) -> RacingFlags {
-        let flags: BitField = self.read_name("SessionFlags").unwrap_or(BitField(0));
+    fn flags(&self) -> Option<RacingFlags> {
+        let flags: BitField = self.read_name("SessionFlags")?;
 
-        RacingFlags {
+        Some(RacingFlags {
             green: flags.0 & global_flags::GREEN != 0,
             yellow: flags.0 & global_flags::YELLOW != 0,
             blue: flags.0 & global_flags::BLUE != 0,
@@ -74,26 +90,26 @@ impl Moment for SimState {
             start_ready: flags.0 & start_flags::READY != 0,
             start_set: flags.0 & start_flags::SET != 0,
             start_go: flags.0 & start_flags::GO != 0,
-        }
+        })
     }
 
-    fn car_model_id(&self) -> Option<String> {
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
         let driver_info = &self.session_info["DriverInfo"];
         let player_car_idx = driver_info["DriverCarIdx"].as_i64()?;
         let player_driver = driver_info["Drivers"]
             .as_vec()?
             .iter()
             .find(|driver| driver["CarIdx"].as_i64() == Some(player_car_idx))?;
-        let car_model_id = player_driver["CarID"].as_i64()?;
-        Some(format!("{car_model_id}"))
+        let vehicle_unique_id = player_driver["CarID"].as_i64()?;
+        Some(format!("{vehicle_unique_id}").into())
     }
 
-    fn ignition_on(&self) -> bool {
-        self.read_name("Voltage").unwrap_or(0.0f32) > 1.0
+    fn is_ignition_on(&self) -> Option<bool> {
+        Some(self.read_name("Voltage").unwrap_or(0.0f32) > 1.0)
     }
 
-    fn starter_on(&self) -> bool {
-        self.read_name("dcStarter").unwrap_or(false)
+    fn is_starter_on(&self) -> Option<bool> {
+        self.read_name("dcStarter")
     }
 }
 

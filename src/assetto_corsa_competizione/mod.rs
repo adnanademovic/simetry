@@ -7,7 +7,8 @@ pub use crate::assetto_corsa_competizione::data::{
 use crate::assetto_corsa_competizione::shared_memory_data::{
     PageFileGraphics, PageFilePhysics, PageFileStatic,
 };
-use crate::{BasicTelemetry, Moment, RacingFlags, Simetry};
+use crate::{Moment, RacingFlags, Simetry};
+use std::borrow::Cow;
 use uom::si::angular_velocity::revolution_per_minute;
 use uom::si::f64::{AngularVelocity, Velocity};
 use uom::si::velocity::kilometer_per_hour;
@@ -71,34 +72,37 @@ impl Simetry for Client {
 }
 
 impl Moment for SimState {
-    fn car_left(&self) -> bool {
-        false
+    fn vehicle_gear(&self) -> Option<i8> {
+        Some((self.physics.gear - 1) as i8)
     }
 
-    fn car_right(&self) -> bool {
-        false
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<kilometer_per_hour>(
+            self.physics.speed_kmh as f64,
+        ))
     }
 
-    fn basic_telemetry(&self) -> Option<BasicTelemetry> {
-        Some(BasicTelemetry {
-            gear: (self.physics.gear - 1) as i8,
-            speed: Velocity::new::<kilometer_per_hour>(self.physics.speed_kmh as f64),
-            engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.physics.rpm as f64,
-            ),
-            max_engine_rotation_speed: AngularVelocity::new::<revolution_per_minute>(
-                self.static_data.max_rpm as f64,
-            ),
-            pit_limiter_engaged: self.physics.pit_limiter_on,
-            in_pit_lane: self.graphics.is_in_pit_lane,
-        })
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.physics.rpm as f64,
+        ))
     }
 
-    fn shift_point(&self) -> Option<AngularVelocity> {
-        None
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<revolution_per_minute>(
+            self.static_data.max_rpm as f64,
+        ))
     }
 
-    fn flags(&self) -> RacingFlags {
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        Some(self.physics.pit_limiter_on)
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        Some(self.graphics.is_in_pit_lane)
+    }
+
+    fn flags(&self) -> Option<RacingFlags> {
         let mut flags = RacingFlags::default();
         match self.graphics.flag {
             FlagType::None => {}
@@ -111,18 +115,26 @@ impl Moment for SimState {
             FlagType::Green => flags.green = true,
             FlagType::Orange => flags.meatball = true,
         }
-        flags
+        Some(flags)
     }
 
-    fn car_model_id(&self) -> Option<String> {
-        Some(self.static_data.car_model.clone())
+    fn vehicle_unique_id(&self) -> Option<Cow<str>> {
+        Some(self.static_data.car_model.as_str().into())
     }
 
-    fn ignition_on(&self) -> bool {
-        self.physics.ignition_on
+    fn is_left_turn_indicator_on(&self) -> Option<bool> {
+        Some(self.graphics.direction_lights_left)
     }
 
-    fn starter_on(&self) -> bool {
-        self.physics.starter_engine_on
+    fn is_right_turn_indicator_on(&self) -> Option<bool> {
+        Some(self.graphics.direction_lights_right)
+    }
+
+    fn is_ignition_on(&self) -> Option<bool> {
+        Some(self.physics.ignition_on)
+    }
+
+    fn is_starter_on(&self) -> Option<bool> {
+        Some(self.physics.starter_engine_on)
     }
 }
