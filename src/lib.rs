@@ -30,10 +30,10 @@ pub trait Simetry {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SimetryConnectionBuilder {
     #[cfg(feature = "unstable_generic_http_client")]
-    pub generic_http_uri: String,
-    pub truck_simulator_uri: String,
-    pub dirt_rally_2_uri: String,
-    pub retry_delay: Duration,
+    generic_http_uri: String,
+    truck_simulator_uri: String,
+    dirt_rally_2_uri: String,
+    retry_delay: Duration,
 }
 
 impl Default for SimetryConnectionBuilder {
@@ -49,6 +49,27 @@ impl Default for SimetryConnectionBuilder {
 }
 
 impl SimetryConnectionBuilder {
+    #[cfg(feature = "unstable_generic_http_client")]
+    pub fn generic_http_uri(mut self, uri: String) -> Self {
+        self.generic_http_uri = uri;
+        self
+    }
+
+    pub fn truck_simulator_uri(mut self, uri: String) -> Self {
+        self.truck_simulator_uri = uri;
+        self
+    }
+
+    pub fn dirt_rally_2_uri(mut self, uri: String) -> Self {
+        self.dirt_rally_2_uri = uri;
+        self
+    }
+
+    pub fn retry_delay(mut self, delay: Duration) -> Self {
+        self.retry_delay = delay;
+        self
+    }
+
     pub async fn connect(self) -> Box<dyn Simetry> {
         let retry_delay = self.retry_delay;
         let iracing_future = iracing::Client::connect(retry_delay);
@@ -78,6 +99,7 @@ impl SimetryConnectionBuilder {
     }
 }
 
+#[cfg(not(feature = "unstable_generic_http_client"))]
 async fn never_resolved() -> iracing::Client {
     loop {
         tokio::time::sleep(Duration::from_secs(1_000_000_000)).await;
