@@ -73,7 +73,17 @@ pub struct SimState {
     #[serde(default)]
     pub flags: Option<RacingFlags>,
     #[serde(default)]
+    pub vehicle_brand_id: Option<String>,
+    #[serde(default)]
+    pub vehicle_model_id: Option<String>,
+    #[serde(default)]
     pub vehicle_unique_id: Option<String>,
+    #[serde(default)]
+    pub left_turn_indicator_on: Option<bool>,
+    #[serde(default)]
+    pub right_turn_indicator_on: Option<bool>,
+    #[serde(default)]
+    pub hazard_indicator_on: Option<bool>,
     #[serde(default)]
     pub ignition_on: Option<bool>,
     #[serde(default)]
@@ -139,8 +149,28 @@ impl Moment for SimState {
         self.flags.clone()
     }
 
+    fn vehicle_brand_id(&self) -> Option<Cow<str>> {
+        Some(self.vehicle_brand_id.as_ref()?.into())
+    }
+
+    fn vehicle_model_id(&self) -> Option<Cow<str>> {
+        Some(self.vehicle_model_id.as_ref()?.into())
+    }
+
     fn vehicle_unique_id(&self) -> Option<Cow<str>> {
         Some(self.vehicle_unique_id.as_ref()?.into())
+    }
+
+    fn is_left_turn_indicator_on(&self) -> Option<bool> {
+        self.left_turn_indicator_on
+    }
+
+    fn is_right_turn_indicator_on(&self) -> Option<bool> {
+        self.right_turn_indicator_on
+    }
+
+    fn is_hazard_indicator_on(&self) -> Option<bool> {
+        self.hazard_indicator_on
     }
 
     fn is_ignition_on(&self) -> Option<bool> {

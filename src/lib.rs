@@ -7,6 +7,7 @@ use uom::si::f64::{AngularVelocity, Velocity};
 pub mod assetto_corsa;
 pub mod assetto_corsa_competizione;
 pub mod dirt_rally_2;
+#[cfg(feature = "unstable_generic_http_client")]
 pub mod generic_http;
 pub mod iracing;
 mod racing_flags;
@@ -28,6 +29,7 @@ pub trait Simetry {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SimetryConnectionBuilder {
+    #[cfg(feature = "unstable_generic_http_client")]
     pub generic_http_uri: String,
     pub truck_simulator_uri: String,
     pub dirt_rally_2_uri: String,
@@ -37,6 +39,7 @@ pub struct SimetryConnectionBuilder {
 impl Default for SimetryConnectionBuilder {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "unstable_generic_http_client")]
             generic_http_uri: generic_http::DEFAULT_URI.to_string(),
             truck_simulator_uri: truck_simulator::DEFAULT_URI.to_string(),
             dirt_rally_2_uri: dirt_rally_2::Client::DEFAULT_URI.to_string(),
@@ -55,8 +58,11 @@ impl SimetryConnectionBuilder {
         let rfactor_2_future = rfactor_2::Client::connect();
         let dirt_rally_2_future =
             dirt_rally_2::Client::connect(&self.dirt_rally_2_uri, retry_delay);
+        #[cfg(feature = "unstable_generic_http_client")]
         let generic_http_future =
             generic_http::GenericHttpClient::connect(&self.generic_http_uri, retry_delay);
+        #[cfg(not(feature = "unstable_generic_http_client"))]
+        let generic_http_future = never_resolved();
         let truck_simulator_future =
             truck_simulator::TruckSimulatorClient::connect(&self.truck_simulator_uri, retry_delay);
 
@@ -69,6 +75,12 @@ impl SimetryConnectionBuilder {
             x = generic_http_future => Box::new(x),
             x = truck_simulator_future => Box::new(x),
         }
+    }
+}
+
+async fn never_resolved() -> iracing::Client {
+    loop {
+        tokio::time::sleep(Duration::from_secs(1_000_000_000)).await;
     }
 }
 

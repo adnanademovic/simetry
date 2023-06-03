@@ -24,6 +24,9 @@ serde_json = "1.0.96"
 hyper = { version = "0.14.25", features = ["client", "http1", "http2", "tcp"] }
 time = { version = "0.3.21", features = ["serde-human-readable"] }
 
+[features]
+unstable_generic_http_client = []
+
 [dependencies.tokio]
 version = "1.24.1"
 features = [
