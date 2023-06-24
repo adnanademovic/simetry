@@ -1,7 +1,11 @@
 use crate::windows_util::SharedMemory;
-use crate::{Moment, Simetry};
+use crate::{Moment, RacingFlags, Simetry};
 use anyhow::{bail, Result};
+use std::borrow::Cow;
 use std::time::Duration;
+use uom::si::angular_velocity::radian_per_second;
+use uom::si::f64::{AngularVelocity, Velocity};
+use uom::si::velocity::meter_per_second;
 
 pub mod bindings;
 
@@ -68,4 +72,80 @@ impl Simetry for Client {
     }
 }
 
-impl Moment for SimState {}
+impl Moment for SimState {
+    fn vehicle_gear(&self) -> Option<i8> {
+        let gear = self.r3e_shared.gear as i8;
+        if gear == -2 {
+            return None;
+        }
+        Some(gear)
+    }
+
+    fn vehicle_velocity(&self) -> Option<Velocity> {
+        Some(Velocity::new::<meter_per_second>(
+            self.r3e_shared.car_speed as f64,
+        ))
+    }
+
+    fn vehicle_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<radian_per_second>(
+            self.r3e_shared.engine_rps as f64,
+        ))
+    }
+
+    fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<radian_per_second>(
+            self.r3e_shared.max_engine_rps as f64,
+        ))
+    }
+
+    fn is_pit_limiter_engaged(&self) -> Option<bool> {
+        let pit_limiter = self.r3e_shared.pit_limiter;
+        if pit_limiter == -1 {
+            return None;
+        }
+        Some(pit_limiter != 0)
+    }
+
+    fn is_vehicle_in_pit_lane(&self) -> Option<bool> {
+        let in_pitlane = self.r3e_shared.in_pitlane;
+        if in_pitlane == -1 {
+            return None;
+        }
+        Some(in_pitlane != 0)
+    }
+
+    fn shift_point(&self) -> Option<AngularVelocity> {
+        Some(AngularVelocity::new::<radian_per_second>(
+            self.r3e_shared.upshift_rps as f64,
+        ))
+    }
+
+    fn flags(&self) -> Option<RacingFlags> {
+        let flags = self.r3e_shared.flags;
+        Some(RacingFlags {
+            green: flags.green > 0,
+            yellow: flags.yellow > 0,
+            blue: flags.blue > 0,
+            white: flags.white > 0,
+            red: false,
+            black: flags.black > 0,
+            checkered: flags.checkered > 0,
+            meatball: false,
+            black_and_white: flags.black_and_white > 0,
+            start_ready: false,
+            start_set: false,
+            start_go: false,
+        })
+    }
+
+    fn vehicle_brand_id(&self) -> Option<Cow<str>> {
+        let value = self.r3e_shared.vehicle_info.manufacturer_id;
+        Some(value.to_string().into())
+    }
+
+    fn vehicle_model_id(&self) -> Option<Cow<str>> {
+        let value = self.r3e_shared.vehicle_info.model_id;
+        Some(value.to_string().into())
+    }
+}
