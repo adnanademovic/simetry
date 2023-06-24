@@ -10,6 +10,7 @@ pub mod dirt_rally_2;
 #[cfg(feature = "unstable_generic_http_client")]
 pub mod generic_http;
 pub mod iracing;
+pub mod raceroom_racing_experience;
 mod racing_flags;
 pub mod rfactor_2;
 pub mod truck_simulator;

@@ -7,6 +7,7 @@ readme = "README.md"
 repository = "https://github.com/adnanademovic/simetry"
 description = "Interface with telemetry of various racing and driving sims"
 version = "0.1.0"
+build = "build.rs"
 
 [dependencies]
 anyhow = "1.0.68"
@@ -48,3 +49,6 @@ features = [
     "Win32_System_WindowsProgramming",
     "Win32_UI_WindowsAndMessaging",
 ]
+
+[build-dependencies]
+bindgen = "0.66.1"
