@@ -7,6 +7,9 @@ fn main() {
     let bindings = bindgen::Builder::default()
         .header("src/raceroom_racing_experience/r3e.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .derive_partialeq(true)
+        .derive_eq(true)
+        .derive_hash(true)
         .generate()
         .expect("Unable to generate bindings");
 

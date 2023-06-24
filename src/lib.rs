@@ -77,6 +77,8 @@ impl SimetryConnectionBuilder {
         let assetto_corsa_future = assetto_corsa::Client::connect(retry_delay);
         let assetto_corsa_competizione_future =
             assetto_corsa_competizione::Client::connect(retry_delay);
+        let raceroom_racing_experience_future =
+            raceroom_racing_experience::Client::connect(retry_delay);
         let rfactor_2_future = rfactor_2::Client::connect();
         let dirt_rally_2_future =
             dirt_rally_2::Client::connect(&self.dirt_rally_2_uri, retry_delay);
@@ -92,6 +94,7 @@ impl SimetryConnectionBuilder {
             x = iracing_future => Box::new(x),
             x = assetto_corsa_future => Box::new(x),
             x = assetto_corsa_competizione_future => Box::new(x),
+            x = raceroom_racing_experience_future => Box::new(x),
             x = rfactor_2_future => Box::new(x),
             x = dirt_rally_2_future => Box::new(x),
             x = generic_http_future => Box::new(x),
