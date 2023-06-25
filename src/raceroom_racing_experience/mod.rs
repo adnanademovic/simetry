@@ -11,6 +11,7 @@ pub mod bindings;
 
 pub struct Client {
     shared_memory: SharedMemory,
+    last_ticks: i32,
 }
 
 impl Client {
@@ -27,7 +28,10 @@ impl Client {
         let poll_delay = Duration::from_millis(250);
         let shared_memory =
             SharedMemory::connect(bindings::R3E_SHARED_MEMORY_NAME, poll_delay).await;
-        Ok(Self { shared_memory })
+        Ok(Self {
+            shared_memory,
+            last_ticks: 0,
+        })
     }
 
     pub async fn next_sim_state(&mut self) -> Result<SimState> {
@@ -51,6 +55,10 @@ impl Client {
                     minor,
                 );
             }
+            if self.last_ticks == r3e_shared.player.game_simulation_ticks {
+                continue;
+            }
+            self.last_ticks = r3e_shared.player.game_simulation_ticks;
             return Ok(SimState { r3e_shared });
         }
     }
@@ -59,6 +67,19 @@ impl Client {
 #[derive(Debug)]
 pub struct SimState {
     pub r3e_shared: bindings::r3e_shared,
+}
+
+impl SimState {
+    pub fn current_driver_data(&self) -> Option<&bindings::r3e_driver_data> {
+        let slot_id = self.r3e_shared.vehicle_info.slot_id;
+        if slot_id < 0 {
+            return None;
+        }
+        self.r3e_shared
+            .all_drivers_data_1
+            .iter()
+            .find(|v| v.driver_info.slot_id == slot_id)
+    }
 }
 
 #[async_trait::async_trait]
@@ -94,9 +115,11 @@ impl Moment for SimState {
     }
 
     fn vehicle_max_engine_rotation_speed(&self) -> Option<AngularVelocity> {
-        Some(AngularVelocity::new::<radian_per_second>(
-            self.r3e_shared.max_engine_rps as f64,
-        ))
+        let value = self.r3e_shared.max_engine_rps;
+        if value < 0.0 {
+            return None;
+        }
+        Some(AngularVelocity::new::<radian_per_second>(value as f64))
     }
 
     fn is_pit_limiter_engaged(&self) -> Option<bool> {
@@ -116,9 +139,11 @@ impl Moment for SimState {
     }
 
     fn shift_point(&self) -> Option<AngularVelocity> {
-        Some(AngularVelocity::new::<radian_per_second>(
-            self.r3e_shared.upshift_rps as f64,
-        ))
+        let value = self.r3e_shared.upshift_rps;
+        if value < 0.0 {
+            return None;
+        }
+        Some(AngularVelocity::new::<radian_per_second>(value as f64))
     }
 
     fn flags(&self) -> Option<RacingFlags> {
@@ -147,5 +172,9 @@ impl Moment for SimState {
     fn vehicle_model_id(&self) -> Option<Cow<str>> {
         let value = self.r3e_shared.vehicle_info.model_id;
         Some(value.to_string().into())
+    }
+
+    fn is_ignition_on(&self) -> Option<bool> {
+        Some(self.current_driver_data()?.engineState > 0)
     }
 }
