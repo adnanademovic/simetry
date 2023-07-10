@@ -237,7 +237,7 @@ pub trait Moment {
 /// Percentage values of pedal inputs.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Pedals {
-    pub throttle: f32,
-    pub brake: f32,
-    pub clutch: f32,
+    pub throttle: f64,
+    pub brake: f64,
+    pub clutch: f64,
 }

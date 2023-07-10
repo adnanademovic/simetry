@@ -114,17 +114,17 @@ impl Moment for SimState {
 
     fn pedals(&self) -> Option<Pedals> {
         Some(Pedals {
-            throttle: self.read_name("Throttle")?,
-            brake: self.read_name("Brake")?,
-            clutch: 1.0 - self.read_name::<f32>("Clutch")?,
+            throttle: self.read_name::<f32>("Throttle")? as f64,
+            brake: self.read_name::<f32>("Brake")? as f64,
+            clutch: 1.0 - self.read_name::<f32>("Clutch")? as f64,
         })
     }
 
     fn pedals_raw(&self) -> Option<Pedals> {
         Some(Pedals {
-            throttle: self.read_name("ThrottleRaw")?,
-            brake: self.read_name("BrakeRaw")?,
-            clutch: 1.0 - self.read_name::<f32>("ClutchRaw")?,
+            throttle: self.read_name::<f32>("ThrottleRaw")? as f64,
+            brake: self.read_name::<f32>("BrakeRaw")? as f64,
+            clutch: 1.0 - self.read_name::<f32>("ClutchRaw")? as f64,
         })
     }
 }
