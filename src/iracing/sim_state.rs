@@ -2,7 +2,7 @@ use crate::iracing::flags::{driver_black_flags, global_flags, start_flags};
 use crate::iracing::{
     BitField, CarPositions, Header, Value, VarData, VarHeader, VarHeaders, VarType,
 };
-use crate::{Moment, RacingFlags};
+use crate::{Moment, Pedals, RacingFlags};
 use std::borrow::Cow;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
@@ -110,6 +110,22 @@ impl Moment for SimState {
 
     fn is_starter_on(&self) -> Option<bool> {
         self.read_name("dcStarter")
+    }
+
+    fn pedals(&self) -> Option<Pedals> {
+        Some(Pedals {
+            throttle: self.read_name("Throttle")?,
+            brake: self.read_name("Brake")?,
+            clutch: 1.0 - self.read_name::<f32>("Clutch")?,
+        })
+    }
+
+    fn pedals_raw(&self) -> Option<Pedals> {
+        Some(Pedals {
+            throttle: self.read_name("ThrottleRaw")?,
+            brake: self.read_name("BrakeRaw")?,
+            clutch: 1.0 - self.read_name::<f32>("ClutchRaw")?,
+        })
     }
 }
 

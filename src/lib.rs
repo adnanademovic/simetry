@@ -1,4 +1,5 @@
 pub use racing_flags::RacingFlags;
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::time::Duration;
 use tokio::select;
@@ -219,4 +220,24 @@ pub trait Moment {
     fn is_starter_on(&self) -> Option<bool> {
         None
     }
+
+    /// Pedal input as read by the game.
+    ///
+    /// This often includes modifications caused by assists.
+    fn pedals(&self) -> Option<Pedals> {
+        None
+    }
+
+    /// Pedal input directly from the inputs.
+    fn pedals_raw(&self) -> Option<Pedals> {
+        self.pedals()
+    }
+}
+
+/// Percentage values of pedal inputs.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Pedals {
+    pub throttle: f32,
+    pub brake: f32,
+    pub clutch: f32,
 }
