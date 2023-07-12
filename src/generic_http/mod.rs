@@ -1,4 +1,4 @@
-use crate::{Moment, RacingFlags, Simetry};
+use crate::{Moment, Pedals, RacingFlags, Simetry};
 use anyhow::Result;
 use hyper::body::Buf;
 use hyper::client::HttpConnector;
@@ -88,6 +88,10 @@ pub struct SimState {
     pub ignition_on: Option<bool>,
     #[serde(default)]
     pub starter_on: Option<bool>,
+    #[serde(default)]
+    pub pedals: Option<Pedals>,
+    #[serde(default)]
+    pub pedals_raw: Option<Pedals>,
 }
 
 #[async_trait::async_trait]
@@ -179,5 +183,13 @@ impl Moment for SimState {
 
     fn is_starter_on(&self) -> Option<bool> {
         self.starter_on
+    }
+
+    fn pedals(&self) -> Option<Pedals> {
+        self.pedals.clone()
+    }
+
+    fn pedals_raw(&self) -> Option<Pedals> {
+        self.pedals_raw.clone()
     }
 }
