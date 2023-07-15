@@ -85,7 +85,7 @@ impl Moment for SimState {
                     | driver_black_flags::FURLED)
                 != 0,
             checkered: flags.0 & global_flags::CHECKERED != 0,
-            meatball: flags.0 & (driver_black_flags::REPAIR | driver_black_flags::SERVICEABLE) != 0,
+            meatball: flags.0 & driver_black_flags::REPAIR != 0,
             black_and_white: false,
             start_ready: flags.0 & start_flags::READY != 0,
             start_set: flags.0 & start_flags::SET != 0,
