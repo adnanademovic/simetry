@@ -3,13 +3,11 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
-    let data = truck_simulator::TruckSimulatorClient::connect(
-        truck_simulator::DEFAULT_URI,
-        Duration::from_secs(1),
-    )
-    .await
-    .query()
-    .await
-    .unwrap();
+    let data =
+        truck_simulator::Client::connect(truck_simulator::DEFAULT_URI, Duration::from_secs(1))
+            .await
+            .query()
+            .await
+            .unwrap();
     println!("{:#?}", data);
 }

@@ -10,10 +10,10 @@ Currently supported sims:
 * iRacing
 * Assetto Corsa
 * Assetto Corsa Competizione
-* rFactor 2 (via https://github.com/TheIronWolfModding/rF2SharedMemoryMapPlugin)
+* rFactor 2 (extra steps for enabling described below)
 * DiRT Rally 2.0
-* Euro Truck Simulator 2 (via https://github.com/Funbit/ets2-telemetry-server)
-* American Truck Simulator (via https://github.com/Funbit/ets2-telemetry-server)
+* Euro Truck Simulator 2 (extra steps for enabling described below)
+* American Truck Simulator (extra steps for enabling described below)
 
 Beyond that, an interface for a generic HTTP server exists, allowing you to easily emulate any sim
 to see the functionality of your software that way, instead of having to run the sim and replicating
@@ -32,3 +32,16 @@ sim is currently running with a generic client, and querying that way.
 
 That generic way currently only supports some basic capabilities, and if you need more than what's
 present there, you can use the interface of the individual sims.
+
+## Extra Configuration
+
+### rFactor 2
+
+Requires adding the DLLs from https://github.com/TheIronWolfModding/rF2SharedMemoryMapPlugin.
+
+### Euro Truck Simulator 2 and American Truck Simulator
+
+Requires adding the DLLs from https://github.com/RenCloud/scs-sdk-plugin.
+
+Alternatively supporting also https://github.com/Funbit/ets2-telemetry-server
+via `simetry::truck_simulator::json_client::Client`.

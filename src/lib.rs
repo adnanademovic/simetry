@@ -33,7 +33,6 @@ pub trait Simetry {
 pub struct SimetryConnectionBuilder {
     #[cfg(feature = "unstable_generic_http_client")]
     generic_http_uri: String,
-    truck_simulator_uri: String,
     dirt_rally_2_uri: String,
     retry_delay: Duration,
 }
@@ -43,7 +42,6 @@ impl Default for SimetryConnectionBuilder {
         Self {
             #[cfg(feature = "unstable_generic_http_client")]
             generic_http_uri: generic_http::DEFAULT_URI.to_string(),
-            truck_simulator_uri: truck_simulator::DEFAULT_URI.to_string(),
             dirt_rally_2_uri: dirt_rally_2::Client::DEFAULT_URI.to_string(),
             retry_delay: Duration::from_secs(5),
         }
@@ -54,11 +52,6 @@ impl SimetryConnectionBuilder {
     #[cfg(feature = "unstable_generic_http_client")]
     pub fn generic_http_uri(mut self, uri: String) -> Self {
         self.generic_http_uri = uri;
-        self
-    }
-
-    pub fn truck_simulator_uri(mut self, uri: String) -> Self {
-        self.truck_simulator_uri = uri;
         self
     }
 
@@ -89,7 +82,7 @@ impl SimetryConnectionBuilder {
         #[cfg(not(feature = "unstable_generic_http_client"))]
         let generic_http_future = never_resolved();
         let truck_simulator_future =
-            truck_simulator::TruckSimulatorClient::connect(&self.truck_simulator_uri, retry_delay);
+            truck_simulator::Client::connect(truck_simulator::DEFAULT_URI, retry_delay);
 
         select! {
             x = iracing_future => Box::new(x),
