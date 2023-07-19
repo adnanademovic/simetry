@@ -6,7 +6,7 @@ license = "MIT"
 readme = "README.md"
 repository = "https://github.com/adnanademovic/simetry"
 description = "Interface with telemetry of various racing and driving sims"
-version = "0.1.0"
+version = "0.2.0"
 build = "build.rs"
 
 [dependencies]
