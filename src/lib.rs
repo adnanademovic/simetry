@@ -81,8 +81,7 @@ impl SimetryConnectionBuilder {
             generic_http::GenericHttpClient::connect(&self.generic_http_uri, retry_delay);
         #[cfg(not(feature = "unstable_generic_http_client"))]
         let generic_http_future = never_resolved();
-        let truck_simulator_future =
-            truck_simulator::Client::connect(truck_simulator::DEFAULT_URI, retry_delay);
+        let truck_simulator_future = truck_simulator::Client::connect(retry_delay);
 
         select! {
             x = iracing_future => Box::new(x),
