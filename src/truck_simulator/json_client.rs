@@ -30,7 +30,7 @@ impl Simetry for Client {
         &self.name
     }
 
-    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment + Send + Sync + 'static>> {
         let data = timeout(Duration::from_secs(2), self.query())
             .await
             .ok()?

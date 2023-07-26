@@ -26,7 +26,7 @@ pub trait Simetry {
     /// Waits for the next reading of data from the sim and returns it.
     ///
     /// A `None` value means that the connection is done, similar to an iterator.
-    async fn next_moment(&mut self) -> Option<Box<dyn Moment>>;
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment + Send + Sync + 'static>>;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

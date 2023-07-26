@@ -33,7 +33,7 @@ impl Simetry for Client {
         "rFactor2"
     }
 
-    async fn next_moment(&mut self) -> Option<Box<dyn Moment>> {
+    async fn next_moment(&mut self) -> Option<Box<dyn Moment + Send + Sync + 'static>> {
         Some(Box::new(self.next_sim_state().await?))
     }
 }
