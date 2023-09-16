@@ -40,6 +40,7 @@ pub struct SafeFileView {
 }
 
 unsafe impl Send for SafeFileView {}
+unsafe impl Sync for SafeFileView {}
 
 impl SafeFileView {
     pub fn new(inner: *const c_void) -> Option<Self> {
@@ -72,32 +73,32 @@ impl SharedMemory {
     pub async fn connect(name: &[u8], poll_delay: Duration) -> Self {
         let handle;
         loop {
-            match unsafe {
-                OpenFileMappingA(FILE_MAP_READ.0, false, PCSTR::from_raw(name.as_ptr()))
-            }
-            .ok()
-            .and_then(SafeHandle::new)
             {
-                Some(val) => {
+                let handle_opt = unsafe {
+                    OpenFileMappingA(FILE_MAP_READ.0, false, PCSTR::from_raw(name.as_ptr()))
+                }
+                .ok()
+                .and_then(SafeHandle::new);
+                if let Some(val) = handle_opt {
                     handle = val;
                     break;
                 }
-                None => {
-                    tokio::time::sleep(poll_delay).await;
-                }
             }
+            tokio::time::sleep(poll_delay).await;
         }
 
         let file_view;
         loop {
-            match SafeFileView::new(unsafe { MapViewOfFile(handle.get(), FILE_MAP_READ, 0, 0, 0) })
             {
-                Some(val) => {
+                let file_view_opt = SafeFileView::new(unsafe {
+                    MapViewOfFile(handle.get(), FILE_MAP_READ, 0, 0, 0)
+                });
+                if let Some(val) = file_view_opt {
                     file_view = val;
                     break;
                 }
-                None => tokio::time::sleep(poll_delay).await,
             }
+            tokio::time::sleep(poll_delay).await;
         }
 
         Self {

@@ -251,21 +251,21 @@ impl DataValidEvent {
     async fn connect() -> Self {
         let poll_delay = Duration::from_millis(250);
         loop {
-            match unsafe {
-                OpenEventA(
-                    SYNCHRONIZATION_SYNCHRONIZE,
-                    false,
-                    PCSTR::from_raw(DATAVALIDEVENTNAME.as_ptr()),
-                )
-            }
-            .ok()
-            .and_then(windows_util::SafeHandle::new)
             {
-                Some(handle) => {
+                let handle_opt = unsafe {
+                    OpenEventA(
+                        SYNCHRONIZATION_SYNCHRONIZE,
+                        false,
+                        PCSTR::from_raw(DATAVALIDEVENTNAME.as_ptr()),
+                    )
+                }
+                .ok()
+                .and_then(windows_util::SafeHandle::new);
+                if let Some(handle) = handle_opt {
                     return Self { handle };
                 }
-                None => tokio::time::sleep(poll_delay).await,
             }
+            tokio::time::sleep(poll_delay).await;
         }
     }
 

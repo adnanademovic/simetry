@@ -65,7 +65,7 @@ impl SimetryConnectionBuilder {
         self
     }
 
-    pub async fn connect(self) -> Box<dyn Simetry> {
+    pub async fn connect(self) -> Box<dyn Simetry + Send + Sync + 'static> {
         let retry_delay = self.retry_delay;
         let iracing_future = iracing::Client::connect(retry_delay);
         let assetto_corsa_future = assetto_corsa::Client::connect(retry_delay);
@@ -105,7 +105,7 @@ async fn never_resolved() -> iracing::Client {
 
 /// Connect to any running sim that is supported.
 #[inline]
-pub async fn connect() -> Box<dyn Simetry> {
+pub async fn connect() -> Box<dyn Simetry + Send + Sync + 'static> {
     SimetryConnectionBuilder::default().connect().await
 }
 
