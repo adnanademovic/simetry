@@ -166,7 +166,7 @@ impl From<PageFileGraphics> for Graphics {
         let car_id_vec = combine_car_info(v.car_id, active_cars);
         let car_coordinates = car_id_vec
             .into_iter()
-            .zip(car_coordinates_vec.into_iter())
+            .zip(car_coordinates_vec)
             .map(|(id, coord)| (id, coord.into()))
             .collect();
 
