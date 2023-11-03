@@ -3,7 +3,7 @@
 use super::BROADCAST_RELOAD_TEXTURES;
 
 const RELOAD_TEXTURES_ALL: u16 = 0;
-const RELOAD_TEXTURES_CAR_IDX: u16 = 0;
+const RELOAD_TEXTURES_CAR_IDX: u16 = 1;
 
 /// Reload textures on all cars.
 pub fn all() {
