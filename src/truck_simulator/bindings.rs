@@ -6,4 +6,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+#[cfg(feature = "with_truck_simulator")]
 include!(concat!(env!("OUT_DIR"), "/scs_telemetry_common.rs"));
+

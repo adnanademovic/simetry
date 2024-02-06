@@ -27,6 +27,10 @@ time = { version = "0.3.21", features = ["serde-human-readable"] }
 
 [features]
 unstable_generic_http_client = []
+with_truck_simulator = []
+with_r3e = []
+
+default = ["with_r3e", "with_truck_simulator"]
 
 [dependencies.tokio]
 version = "1.24.1"

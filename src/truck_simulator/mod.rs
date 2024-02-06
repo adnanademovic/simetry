@@ -102,7 +102,7 @@ impl SimState {
                 .map_while(|v| if *v < 32 { None } else { Some(*v as u8) })
                 .collect(),
         )
-        .unwrap()
+            .unwrap()
     }
 }
 

@@ -11,9 +11,11 @@ pub mod dirt_rally_2;
 #[cfg(feature = "unstable_generic_http_client")]
 pub mod generic_http;
 pub mod iracing;
+#[cfg(feature = "with_r3e")]
 pub mod raceroom_racing_experience;
 mod racing_flags;
 pub mod rfactor_2;
+#[cfg(feature = "with_truck_simulator")]
 pub mod truck_simulator;
 mod windows_util;
 
@@ -71,17 +73,23 @@ impl SimetryConnectionBuilder {
         let assetto_corsa_future = assetto_corsa::Client::connect(retry_delay);
         let assetto_corsa_competizione_future =
             assetto_corsa_competizione::Client::connect(retry_delay);
-        let raceroom_racing_experience_future =
+        #[cfg(feature = "with_r3e")]
+            let raceroom_racing_experience_future =
             raceroom_racing_experience::Client::connect(retry_delay);
+        #[cfg(not(feature = "with_r3e"))]
+            let raceroom_racing_experience_future = never_resolved();
         let rfactor_2_future = rfactor_2::Client::connect();
         let dirt_rally_2_future =
             dirt_rally_2::Client::connect(&self.dirt_rally_2_uri, retry_delay);
         #[cfg(feature = "unstable_generic_http_client")]
-        let generic_http_future =
+            let generic_http_future =
             generic_http::GenericHttpClient::connect(&self.generic_http_uri, retry_delay);
         #[cfg(not(feature = "unstable_generic_http_client"))]
-        let generic_http_future = never_resolved();
-        let truck_simulator_future = truck_simulator::Client::connect(retry_delay);
+            let generic_http_future = never_resolved();
+        #[cfg(feature = "with_truck_simulator")]
+            let truck_simulator_future = truck_simulator::Client::connect(retry_delay);
+        #[cfg(not(feature = "with_truck_simulator"))]
+            let truck_simulator_future = never_resolved();
 
         select! {
             x = iracing_future => Box::new(x),
